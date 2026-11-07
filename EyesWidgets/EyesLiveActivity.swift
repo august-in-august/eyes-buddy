@@ -92,7 +92,7 @@ private struct BlinkEye: View {
     }
 }
 
-/// "Watching you for" label with the self-updating timer.
+/// "Time left" label with the self-updating countdown.
 private struct WatchingTimer: View {
     let context: ActivityViewContext<EyesAttributes>
     let timerSize: CGFloat
@@ -100,10 +100,15 @@ private struct WatchingTimer: View {
     var body: some View {
         let red = context.isRed
         VStack(spacing: 2) {
-            Text("Watching you for")
+            Text("Time left")
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(EyeStyle.secondaryText)
-            Text(timerInterval: context.attributes.watchingRange, pauseTime: nil, countsDown: false, showsHours: true)
+            Text(
+                timerInterval: context.attributes.limitRange(for: context.state),
+                pauseTime: nil,
+                countsDown: true,
+                showsHours: context.state.redLimitSeconds >= 3600
+            )
                 .font(.system(size: timerSize, weight: .heavy).monospacedDigit())
                 .foregroundStyle(red ? EyeStyle.redCopy : .white)
                 .multilineTextAlignment(.center)
@@ -111,13 +116,13 @@ private struct WatchingTimer: View {
     }
 }
 
-/// Progress bar toward the red limit, with "Red in …" / the red-state copy and the limit.
+/// Progress bar toward the end, with "Ends at …" / the time's-up copy and the total.
 private struct ProgressFooter: View {
     let context: ActivityViewContext<EyesAttributes>
 
     var body: some View {
         let red = context.isRed
-        let redDate = context.attributes.redDate(for: context.state)
+        let endDate = context.attributes.redDate(for: context.state)
 
         VStack(spacing: 6) {
             ProgressView(timerInterval: context.attributes.limitRange(for: context.state), countsDown: false) {
@@ -130,17 +135,16 @@ private struct ProgressFooter: View {
 
             HStack {
                 if red {
-                    Text("You've been staring for a while 👀")
+                    Text("Time's up! 👀")
                         .foregroundStyle(EyeStyle.redCopy)
                 } else {
                     HStack(spacing: 4) {
-                        Text("Red in")
-                        Text(timerInterval: .now...max(.now.addingTimeInterval(1), redDate), countsDown: true, showsHours: true)
-                            .monospacedDigit()
+                        Text("Ends at")
+                        Text(endDate, style: .time)
                     }
                 }
                 Spacer(minLength: 8)
-                Text("Limit \(Self.limitLabel(context.state.redLimitSeconds))")
+                Text("Total \(DurationFormat.short(context.state.redLimitSeconds))")
             }
             .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(EyeStyle.secondaryText)
@@ -149,9 +153,6 @@ private struct ProgressFooter: View {
         }
     }
 
-    static func limitLabel(_ seconds: Int) -> String {
-        seconds >= 3600 && seconds % 3600 == 0 ? "\(seconds / 3600) h" : "\(seconds / 60) min"
-    }
 }
 
 private struct LockScreenView: View {

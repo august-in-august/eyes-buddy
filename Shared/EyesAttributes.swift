@@ -57,11 +57,7 @@ nonisolated struct EyesAttributes: ActivityAttributes {
         redDate(limitSeconds: state.redLimitSeconds)
     }
 
-    /// Range for `Text(timerInterval:)`, covering the 8 h life of an activity.
-    var watchingRange: ClosedRange<Date> {
-        sessionStart...sessionStart.addingTimeInterval(TimeInterval(EyeStyle.maxSessionSeconds))
-    }
-
+    /// Start...end of the timer, for `Text(timerInterval:)` and `ProgressView(timerInterval:)`.
     func limitRange(for state: ContentState) -> ClosedRange<Date> {
         sessionStart...max(sessionStart.addingTimeInterval(1), redDate(for: state))
     }

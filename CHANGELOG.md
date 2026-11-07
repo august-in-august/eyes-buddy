@@ -19,7 +19,16 @@
 - **Limitation:** Live Activities only change when the app pushes an update, so the animation runs only while the app is alive (foreground + 20 s after backgrounding, then it settles on an open, calm frame). Continuous animation while the app is closed needs APNs Live Activity push updates (a server), which is out of scope for v1.
 - Cadence is in `EyeStyle` (glanceInterval, tiredInterval, sweep*). iOS may throttle frequent updates; the sweep is ~1 update/s while running.
 
+## Concept change: timer app
+
+- Set a timer, start it, and the eyes watch; they turn red at zero. The island and Lock Screen show "Time left" (countdown), "Ends at", and "Total".
+- Alarm: a generated angry growl (`Resources/angry.wav`) plays in the app when time is up, and a local notification with the same sound covers the case where the app isn't running. Toggle in the page's Alarm section.
+- Settings screen removed: its sections now sit below the Start/Stop button on the main page, which scrolls. Toggles use an accent track so the knob is visible.
+- Timer length: 7 quick times (editable via "Edit times") plus Custom with alarm-style h / min / s wheels. Max 8 h (Live Activity limit), min 1 s.
+- Buttons: Start timer / Stop timer / Stop alarm, plus Restart.
+
 ### Not done / notes
+
 
 - App icon added; accent color from the design is not set.
 - Reduce Motion: the in-app tracking spring is disabled; the blink is still an instant swap, not a fade.

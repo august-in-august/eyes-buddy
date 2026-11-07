@@ -5,10 +5,12 @@ nonisolated enum SharedSettings {
     static let appGroup = "group.com.augustyang.eyesbuddy"
 
     private enum Key {
-        static let redLimitSeconds = "redLimitSeconds"
+        static let totalSeconds = "timerTotalSeconds"
         static let islandEnabled = "islandEnabled"
-        static let sessionStart = "sessionStart"
+        static let timerStart = "timerStart"
         static let onboardingDone = "onboardingDone"
+        static let quickTimes = "quickTimes"
+        static let alarmSound = "alarmSound"
     }
 
     // Falls back to standard defaults if the group container is unavailable (e.g. unsigned builds).
@@ -16,32 +18,34 @@ nonisolated enum SharedSettings {
         UserDefaults(suiteName: appGroup) ?? .standard
     }
 
-    static let defaultRedLimit = 3600
-    static let minRedLimit = 5 * 60
-    static let maxRedLimit = 4 * 3600
+    static let defaultTotal = 5 * 60
+    static let minTotal = 1
+    /// A Live Activity is ended by the system after 8 h, so a timer can't be longer.
+    static let maxTotal = 8 * 3600
+    static let quickTimeCount = 7
+    static let defaultQuickTimes = [60, 15 * 60, 30 * 60, 3600, 2 * 3600, 3 * 3600, 4 * 3600]
 
-    /// Preset limits in seconds (Settings picker). DEBUG builds add a 1-minute option.
-    static var presetLimits: [Int] {
-        var presets = [15 * 60, 30 * 60, 3600, 2 * 3600, 3 * 3600, 4 * 3600]
-        #if DEBUG
-        presets.insert(60, at: 0)
-        #endif
-        return presets
+    static func clampTotal(_ seconds: Int) -> Int {
+        min(max(seconds, minTotal), maxTotal)
     }
 
-    static var redLimitSeconds: Int {
+    /// Timer length in seconds.
+    static var totalSeconds: Int {
         get {
-            let v = defaults.integer(forKey: Key.redLimitSeconds)
-            return v == 0 ? defaultRedLimit : v
+            let v = defaults.integer(forKey: Key.totalSeconds)
+            return v == 0 ? defaultTotal : clampTotal(v)
         }
-        set {
-            #if DEBUG
-            let lower = 60
-            #else
-            let lower = minRedLimit
-            #endif
-            defaults.set(min(max(newValue, lower), maxRedLimit), forKey: Key.redLimitSeconds)
+        set { defaults.set(clampTotal(newValue), forKey: Key.totalSeconds) }
+    }
+
+    /// The seven quick-pick times (user editable).
+    static var quickTimes: [Int] {
+        get {
+            guard let saved = defaults.array(forKey: Key.quickTimes) as? [Int],
+                  saved.count == quickTimeCount else { return defaultQuickTimes }
+            return saved.map(clampTotal)
         }
+        set { defaults.set(newValue.map(clampTotal), forKey: Key.quickTimes) }
     }
 
     static var islandEnabled: Bool {
@@ -49,9 +53,15 @@ nonisolated enum SharedSettings {
         set { defaults.set(newValue, forKey: Key.islandEnabled) }
     }
 
-    static var sessionStart: Date? {
-        get { defaults.object(forKey: Key.sessionStart) as? Date }
-        set { defaults.set(newValue, forKey: Key.sessionStart) }
+    /// When the running timer was started; nil when no timer is running.
+    static var timerStart: Date? {
+        get { defaults.object(forKey: Key.timerStart) as? Date }
+        set { defaults.set(newValue, forKey: Key.timerStart) }
+    }
+
+    static var alarmSoundEnabled: Bool {
+        get { defaults.object(forKey: Key.alarmSound) as? Bool ?? true }
+        set { defaults.set(newValue, forKey: Key.alarmSound) }
     }
 
     static var onboardingDone: Bool {

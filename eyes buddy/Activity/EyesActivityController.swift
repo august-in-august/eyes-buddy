@@ -3,7 +3,7 @@ import Foundation
 import Observation
 import UIKit
 
-/// Owns the single Live Activity and the session the in-app timer reads.
+/// Owns the timer and the single Live Activity that mirrors it.
 /// `Activity<EyesAttributes>.activities` is the source of truth; never more than one runs.
 ///
 /// Live Activities are snapshots: the island only changes when this process pushes an update.
@@ -12,13 +12,16 @@ import UIKit
 @MainActor
 @Observable
 final class EyesActivityController {
-    private(set) var sessionStart: Date
-    private(set) var redLimitSeconds: Int
+    /// When the running timer started; nil when no timer is running.
+    private(set) var startDate: Date?
+    /// Timer length in seconds.
+    private(set) var totalSeconds: Int
     private(set) var islandEnabled: Bool
     private(set) var activitiesEnabled: Bool
 
     private let authorization = ActivityAuthorizationInfo()
     @ObservationIgnored private var enablementTask: Task<Void, Never>?
+    @ObservationIgnored private var endTask: Task<Void, Never>?
 
     // Animation
     @ObservationIgnored private var live: EyesAttributes.ContentState
@@ -27,21 +30,23 @@ final class EyesActivityController {
     @ObservationIgnored private var graceTask: Task<Void, Never>?
     @ObservationIgnored private var backgroundTaskID = UIBackgroundTaskIdentifier.invalid
 
-    var redDate: Date { sessionStart.addingTimeInterval(TimeInterval(redLimitSeconds)) }
+    var isRunning: Bool { startDate != nil }
+    var endDate: Date? { startDate?.addingTimeInterval(TimeInterval(totalSeconds)) }
 
     init() {
-        let now = Date.now
-        if let stored = SharedSettings.sessionStart,
-           now.timeIntervalSince(stored) < TimeInterval(EyeStyle.maxSessionSeconds) {
-            sessionStart = stored
-        } else {
-            sessionStart = now
-            SharedSettings.sessionStart = now
-        }
-        redLimitSeconds = SharedSettings.redLimitSeconds
+        TimerNotifications.install()
+        totalSeconds = SharedSettings.totalSeconds
         islandEnabled = SharedSettings.islandEnabled
         activitiesEnabled = authorization.areActivitiesEnabled
-        live = .make(redLimitSeconds: SharedSettings.redLimitSeconds)
+        live = .make(redLimitSeconds: SharedSettings.totalSeconds)
+
+        if let stored = SharedSettings.timerStart,
+           Date.now.timeIntervalSince(stored) < TimeInterval(EyeStyle.maxSessionSeconds) {
+            startDate = stored
+            scheduleEnd()
+        } else {
+            SharedSettings.timerStart = nil
+        }
 
         enablementTask = Task { [weak self] in
             guard let updates = self?.authorization.activityEnablementUpdates else { return }
@@ -52,27 +57,66 @@ final class EyesActivityController {
         }
     }
 
+    // MARK: Timer
+
+    /// Start (or restart) the timer from zero.
+    func startTimer() async {
+        AlarmPlayer.shared.stop()
+        await endAll()
+        startDate = .now
+        SharedSettings.timerStart = startDate
+        scheduleEnd()
+        await startIfNeeded()
+    }
+
+    /// Stop the timer and the alarm, and take the eyes out of the island.
+    func stopTimer() async {
+        AlarmPlayer.shared.stop()
+        endTask?.cancel()
+        TimerNotifications.cancel()
+        startDate = nil
+        SharedSettings.timerStart = nil
+        await endAll()
+    }
+
+    func setTotal(_ seconds: Int) async {
+        SharedSettings.totalSeconds = seconds
+        totalSeconds = SharedSettings.totalSeconds
+        guard isRunning else { return }
+        scheduleEnd()
+        for activity in Activity<EyesAttributes>.activities { await push(to: activity) }
+    }
+
+    func setIslandEnabled(_ enabled: Bool) async {
+        islandEnabled = enabled
+        SharedSettings.islandEnabled = enabled
+        await startIfNeeded()
+    }
+
     // MARK: Lifecycle
 
-    /// Run on launch and whenever the scene becomes active.
+    /// Run on launch and whenever the scene becomes active: makes the activity match the timer.
     func startIfNeeded() async {
         cancelBackgroundGrace()
         activitiesEnabled = authorization.areActivitiesEnabled
 
-        // The 8 h system limit ends the activity; roll over to a fresh session.
-        if Date.now.timeIntervalSince(sessionStart) >= TimeInterval(EyeStyle.maxSessionSeconds) {
-            sessionStart = .now
-            SharedSettings.sessionStart = sessionStart
-            await endAll()
+        // The 8 h system limit ends the activity, so a timer can't outlive it.
+        if let start = startDate, Date.now.timeIntervalSince(start) >= TimeInterval(EyeStyle.maxSessionSeconds) {
+            startDate = nil
+            SharedSettings.timerStart = nil
         }
 
-        guard islandEnabled, activitiesEnabled else { return }
+        guard let start = startDate, islandEnabled else {
+            await endAll()
+            return
+        }
+        guard activitiesEnabled else { return }
 
         let running = Activity<EyesAttributes>.activities
         if let current = running.first {
             // Keep exactly one.
             for extra in running.dropFirst() { await extra.end(nil, dismissalPolicy: .immediate) }
-            if current.attributes.sessionStart != sessionStart {
+            if current.attributes.sessionStart != start {
                 await current.end(nil, dismissalPolicy: .immediate)
             } else {
                 await push(to: current)
@@ -80,28 +124,8 @@ final class EyesActivityController {
                 return
             }
         }
-        start()
+        startActivity(sessionStart: start)
         startAnimating()
-    }
-
-    func setRedLimit(_ seconds: Int) async {
-        SharedSettings.redLimitSeconds = seconds
-        redLimitSeconds = SharedSettings.redLimitSeconds
-        for activity in Activity<EyesAttributes>.activities { await push(to: activity) }
-    }
-
-    func setIslandEnabled(_ enabled: Bool) async {
-        islandEnabled = enabled
-        SharedSettings.islandEnabled = enabled
-        if enabled { await startIfNeeded() } else { await endAll() }
-    }
-
-    /// End the activity and start a new one with `sessionStart = now`.
-    func resetSession() async {
-        await endAll()
-        sessionStart = .now
-        SharedSettings.sessionStart = sessionStart
-        await startIfNeeded()
     }
 
     /// Keep animating briefly while iOS lets the process run, then settle on a calm frame.
@@ -119,9 +143,32 @@ final class EyesActivityController {
 
     // MARK: Private
 
-    private func start() {
+    /// Schedules the end-of-timer notification and, if the app is still foregrounded, the growl.
+    private func scheduleEnd() {
+        endTask?.cancel()
+        guard let end = endDate else { return }
+        Task {
+            await TimerNotifications.requestAuthorization()
+            await TimerNotifications.schedule(at: end)
+        }
+        endTask = Task { [weak self] in
+            let wait = end.timeIntervalSinceNow
+            if wait > 0 { try? await Task.sleep(for: .seconds(wait)) }
+            guard !Task.isCancelled else { return }
+            self?.timerDidEnd(at: end)
+        }
+    }
+
+    private func timerDidEnd(at end: Date) {
+        // If the app was suspended and only just woke up, the notification already made the noise.
+        guard UIApplication.shared.applicationState == .active,
+              Date.now.timeIntervalSince(end) < 2 else { return }
+        AlarmPlayer.shared.play()
+    }
+
+    private func startActivity(sessionStart: Date) {
         let attributes = EyesAttributes(sessionStart: sessionStart)
-        live.redLimitSeconds = redLimitSeconds
+        live.redLimitSeconds = totalSeconds
         do {
             _ = try Activity.request(
                 attributes: attributes,
@@ -135,7 +182,7 @@ final class EyesActivityController {
 
     /// Every update re-passes the staleDate, otherwise the red switch is cleared.
     private func push(to activity: Activity<EyesAttributes>) async {
-        live.redLimitSeconds = redLimitSeconds
+        live.redLimitSeconds = totalSeconds
         await activity.update(ActivityContent(
             state: live,
             staleDate: activity.attributes.redDate(for: live)

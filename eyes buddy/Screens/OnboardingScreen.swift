@@ -5,7 +5,7 @@ struct OnboardingScreen: View {
     var onFinish: () -> Void
 
     @State private var page = 0
-    @State private var limit = SharedSettings.redLimitSeconds
+    @State private var total = SharedSettings.totalSeconds
     private let pageCount = 3
 
     var body: some View {
@@ -41,13 +41,14 @@ struct OnboardingScreen: View {
                     withAnimation { page += 1 }
                 } else {
                     Task {
-                        await controller.setRedLimit(limit)
+                        await controller.setTotal(total)
                         await controller.setIslandEnabled(true)
+                        await TimerNotifications.requestAuthorization()
                         onFinish()
                     }
                 }
             } label: {
-                Text(page < pageCount - 1 ? "Next" : "Turn on the eyes")
+                Text(page < pageCount - 1 ? "Next" : "Get started")
                     .font(.system(size: 17, weight: .heavy))
                     .padding(.horizontal, 16)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -57,7 +58,7 @@ struct OnboardingScreen: View {
             }
             .buttonStyle(.plain)
 
-            Text(page == pageCount - 1 ? "Next, iOS asks to allow Live Activities." : " ")
+            Text(page == pageCount - 1 ? "iOS will ask to allow notifications so the alarm can ring." : " ")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(EyeStyle.secondaryText)
                 .padding(.top, 8)
@@ -77,7 +78,7 @@ struct OnboardingScreen: View {
             .padding(14)
             .background(Capsule().fill(.black))
             headline("Meet your eyes")
-            body("A tiny creature lives in your camera cutout. It watches while you scroll, blinks when you poke it, and gets tired if you stare too long.")
+            body("A tiny creature lives in your camera cutout. Start a timer and it keeps watch, blinks when you poke it, and turns red when time runs out.")
         }
     }
 
@@ -99,9 +100,9 @@ struct OnboardingScreen: View {
 
     private var setLimit: some View {
         VStack(alignment: .leading, spacing: 20) {
-            headline("Set how long before they get tired")
-            body("Past the limit, the eyes turn red. It's a nudge, not a lock. Change it any time.")
-            LimitPicker(seconds: $limit)
+            headline("Set your timer")
+            body("When time runs out, the eyes turn red and growl. Change the time whenever you like.")
+            TimerPicker(seconds: $total)
         }
     }
 
