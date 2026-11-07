@@ -4,6 +4,7 @@ import SwiftUI
 struct SettingsSections: View {
     @Environment(EyesActivityController.self) private var controller
     @State private var alarmSound = SharedSettings.alarmSoundEnabled
+    @State private var selectedSound = AlarmSound.selected
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -21,9 +22,19 @@ struct SettingsSections: View {
                 ))
             }
 
-            section("Alarm", note: "A grumpy growl when time is up.") {
-                toggle("Angry sound", isOn: $alarmSound)
-                    .onChange(of: alarmSound) { _, value in SharedSettings.alarmSoundEnabled = value }
+            section("Alarm", note: "Repeats every 5 seconds until you stop it.") {
+                toggle("Alarm sound", isOn: $alarmSound)
+                    .onChange(of: alarmSound) { _, value in
+                        SharedSettings.alarmSoundEnabled = value
+                        controller.alarmSettingsChanged()
+                    }
+                if alarmSound {
+                    soundList
+                }
+            }
+
+            section("App icon", note: "The dark-mode icon is always the black one.") {
+                IconPicker()
             }
 
             section("About", note: nil) {
@@ -57,6 +68,42 @@ struct SettingsSections: View {
             content()
         }
         .padding(.bottom, 24)
+    }
+
+    /// Tap a sound to choose it and hear it once.
+    private var soundList: some View {
+        VStack(spacing: 1) {
+            ForEach(AlarmSound.allCases) { sound in
+                let selected = sound == selectedSound
+                Button {
+                    selectedSound = sound
+                    SharedSettings.alarmSoundID = sound.rawValue
+                    AlarmPlayer.shared.preview(sound)
+                    controller.alarmSettingsChanged()
+                } label: {
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(sound.title).font(.system(size: 17, weight: .heavy))
+                            Text(sound.subtitle)
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(selected ? Color.black.opacity(0.6) : EyeStyle.secondaryText)
+                        }
+                        Spacer()
+                        Image(systemName: selected ? "speaker.wave.2.fill" : "speaker.wave.1")
+                            .font(.system(size: 15, weight: .semibold))
+                    }
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(height: 60)
+                    .foregroundStyle(selected ? Color.black : .white)
+                    .background(selected ? Color.white : EyeStyle.ground)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+            }
+        }
+        .background(EyeStyle.rule)
     }
 
     /// The accent track keeps the white knob visible in both states.

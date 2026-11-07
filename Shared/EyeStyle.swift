@@ -69,7 +69,11 @@ nonisolated enum EyeStyle {
     // MARK: Island animation timing (seconds). Updates only happen while the app process is alive.
     /// Time between random glances (each glance is preceded by a blink).
     static let glanceInterval = 5.0
-    static let blinkDuration = 0.25
+    /// A blink is a few lid positions: slide down, hold shut, slide up. Slower reads as more natural
+    /// because the system only cross-fades between frames.
+    static let blinkSteps = 3
+    static let blinkStepDuration = 0.22
+    static let blinkHold = 0.4
     /// Slow close/open to suggest tiredness.
     static let tiredInterval = 5.0 * 60
     static let tiredStepDuration = 0.35

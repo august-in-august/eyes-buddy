@@ -27,6 +27,12 @@
 - Timer length: 7 quick times (editable via "Edit times") plus Custom with alarm-style h / min / s wheels. Max 8 h (Live Activity limit), min 1 s.
 - Buttons: Start timer / Stop timer / Stop alarm, plus Restart.
 
+## Feedback round 2
+
+- Alarm sounds: choose from Angry growl, Hunn!, Buzzer, Alarm clock, Siren, Chime (tap to select and preview). The alarm repeats every 5 s until stopped (max 5 min). In the background it is a series of 12 notifications 5 s apart (1 min); returning to the app resumes the ringing in-app. Sounds are synthesized by a script, not recorded, so swap the files in `Resources/` for better ones.
+- App icon picker: Red (default), Light (the no-background icon on white), Mono (grayscale). All keep the black icon for dark mode and the grayscale one for tinted mode.
+- Island blink is slower and stepped: lid slides down in 3 steps, stays shut 0.4 s while the eyes pick a new direction, then slides up in 3 steps. Tap-to-blink got half-lidded frames too.
+
 ### Not done / notes
 
 

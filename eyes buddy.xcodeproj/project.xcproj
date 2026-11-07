@@ -64,6 +64,7 @@
         },
       ],
       "build-settings": {
+        "ASSETCATALOG_COMPILER_ALTERNATE_APPICON_NAMES": "AppIconLight AppIconMono",
         "ASSETCATALOG_COMPILER_APPICON_NAME": "AppIcon",
         "ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS": "NO",
         "CODE_SIGN_ENTITLEMENTS": "eyes buddy/eyes buddy.entitlements",

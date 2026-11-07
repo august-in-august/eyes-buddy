@@ -11,6 +11,7 @@ nonisolated enum SharedSettings {
         static let onboardingDone = "onboardingDone"
         static let quickTimes = "quickTimes"
         static let alarmSound = "alarmSound"
+        static let alarmSoundID = "alarmSoundID"
     }
 
     // Falls back to standard defaults if the group container is unavailable (e.g. unsigned builds).
@@ -62,6 +63,12 @@ nonisolated enum SharedSettings {
     static var alarmSoundEnabled: Bool {
         get { defaults.object(forKey: Key.alarmSound) as? Bool ?? true }
         set { defaults.set(newValue, forKey: Key.alarmSound) }
+    }
+
+    /// Raw value of the chosen `AlarmSound`.
+    static var alarmSoundID: String {
+        get { defaults.string(forKey: Key.alarmSoundID) ?? "growl" }
+        set { defaults.set(newValue, forKey: Key.alarmSoundID) }
     }
 
     static var onboardingDone: Bool {
