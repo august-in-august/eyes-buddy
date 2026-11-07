@@ -20,8 +20,11 @@ import SwiftUI
             .environment(controller)
             .task { if onboardingDone { await controller.startIfNeeded() } }
             .onChange(of: scenePhase) { _, phase in
-                if phase == .active, onboardingDone {
-                    Task { await controller.startIfNeeded() }
+                guard onboardingDone else { return }
+                switch phase {
+                case .active: Task { await controller.startIfNeeded() }
+                case .background: controller.appDidEnterBackground()
+                default: break
                 }
             }
         }

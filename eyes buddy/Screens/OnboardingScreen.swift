@@ -49,8 +49,9 @@ struct OnboardingScreen: View {
             } label: {
                 Text(page < pageCount - 1 ? "Next" : "Turn on the eyes")
                     .font(.system(size: 17, weight: .heavy))
-                    .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
                     .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(height: 52)
                     .foregroundStyle(.black)
                     .background(.white)
             }

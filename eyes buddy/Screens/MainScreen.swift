@@ -69,7 +69,9 @@ struct MainScreen: View {
         let d = EyeStyle.appEye
         return ZStack(alignment: .topLeading) {
             if let pill = layout.pill {
-                Capsule().fill(EyeStyle.island)
+                // Continues the real island downward so it looks like it grew a face.
+                RoundedRectangle(cornerRadius: EyeStyle.islandSize.height / 2 + 6)
+                    .fill(EyeStyle.island)
                     .frame(width: pill.width, height: pill.height)
                     .position(x: pill.midX, y: pill.midY)
             }
@@ -85,20 +87,21 @@ struct MainScreen: View {
             }
         }
         .animation(reduceMotion ? nil : .spring(duration: 0.15), value: touch)
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Googly eyes, watching for \(Int(elapsed / 60)) minutes")
-        .accessibilityHint("Tap to blink")
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction { blink() }
-        // The tap target covers only the eyes row so the rest of the screen stays free for tracking.
+        // This layer fills the screen, so it must never take hits or it blocks every button below.
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+        // Only this small area (offset, so it doesn't grow the layout) receives taps.
         .overlay(alignment: .topLeading) {
             Color.clear
                 .frame(width: layout.tapRect.width, height: layout.tapRect.height)
                 .contentShape(Rectangle())
                 .onTapGesture { blink() }
-                .position(x: layout.tapRect.midX, y: layout.tapRect.midY)
-                .accessibilityHidden(true)
+                .offset(x: layout.tapRect.minX, y: layout.tapRect.minY)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Googly eyes, watching for \(Int(elapsed / 60)) minutes")
+                .accessibilityHint("Tap to blink")
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { blink() }
         }
     }
 
@@ -139,13 +142,11 @@ struct MainScreen: View {
                     .padding(.top, 8)
             }
 
-            Spacer(minLength: 16)
-
+            // Compact play area; the whole screen still tracks the finger.
             Text(controller.islandEnabled ? "Drag your finger, they're watching." : "The eyes are asleep. Wake them?")
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(EyeStyle.secondaryText)
-
-            Spacer(minLength: 16)
+                .frame(maxWidth: .infinity, minHeight: EyeStyle.hintAreaHeight, alignment: .leading)
 
             Rectangle().fill(EyeStyle.rule).frame(height: 2)
 
@@ -182,16 +183,20 @@ struct MainScreen: View {
             } label: {
                 Text(controller.islandEnabled ? "Put eyes to sleep" : "Wake the eyes")
                     .font(.system(size: 17, weight: .heavy))
-                    .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
                     .padding(.horizontal, 16)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(height: 52)
                     .foregroundStyle(.black)
                     .background(.white)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .padding(.top, 20)
-            .padding(.bottom, max(20, layout.bottomInset))
+
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, EyeStyle.margin)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var disabledBanner: some View {
@@ -237,14 +242,16 @@ private struct EyesLayout {
         let mid = width / 2
 
         if hasIsland {
-            let centerY = EyeStyle.islandTop + EyeStyle.islandSize.height / 2
-            let dx = EyeStyle.islandSize.width / 2 + EyeStyle.appEyeGap + d / 2
+            // Eyes sit just below the island, clear of the status bar, on a pill that extends the island.
+            let islandBottom = EyeStyle.islandTop + EyeStyle.islandSize.height
+            let centerY = islandBottom + EyeStyle.appPillPadding + d / 2
+            let dx = EyeStyle.appEyePairGap / 2 + d / 2
             eyeCenters = [CGPoint(x: mid - dx, y: centerY), CGPoint(x: mid + dx, y: centerY)]
-            let pillW = 2 * (dx + d / 2 + EyeStyle.appPillPadding)
-            let pillH = d + 2 * EyeStyle.appPillPadding
-            pill = CGRect(x: mid - pillW / 2, y: centerY - pillH / 2, width: pillW, height: pillH)
-            tapRect = pill ?? .zero
-            contentTop = centerY + pillH / 2 + 16
+            let pillW = max(EyeStyle.islandSize.width, 2 * (dx + d / 2 + EyeStyle.appPillPadding))
+            let pillBottom = centerY + d / 2 + EyeStyle.appPillPadding
+            pill = CGRect(x: mid - pillW / 2, y: EyeStyle.islandTop, width: pillW, height: pillBottom - EyeStyle.islandTop)
+            tapRect = CGRect(x: mid - pillW / 2, y: islandBottom, width: pillW, height: pillBottom - islandBottom)
+            contentTop = pillBottom + 12
         } else {
             let centerY = max(safeTop, 20) + 8 + d / 2
             let dx = EyeStyle.appEyePairGap / 2 + d / 2

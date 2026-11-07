@@ -48,7 +48,9 @@ nonisolated enum EyeStyle {
     // MARK: Eye sizes
     static let compactEye = 24.0
     static let minimalEye = 27.0
-    static let expandedEye = 60.0
+    static let expandedEye = 56.0
+    /// Expanded view resting pose for the left eye (inward and down); the right eye mirrors it.
+    static let expandedRestPose = CGVector(dx: 0.55, dy: 0.45)
     static let lockScreenEye = 56.0
     static let appEye = 44.0
     /// Gap between the island's edge and each in-app eye, and pill padding around the eyes.
@@ -59,8 +61,26 @@ nonisolated enum EyeStyle {
     static let minTapTarget = 44.0
 
     // MARK: Layout
+    /// Height reserved for the "Drag your finger" hint on the main screen.
+    static let hintAreaHeight = 100.0
     static let spacing = 4.0
     static let margin = 20.0
+
+    // MARK: Island animation timing (seconds). Updates only happen while the app process is alive.
+    /// Time between random glances (each glance is preceded by a blink).
+    static let glanceInterval = 5.0
+    static let blinkDuration = 0.25
+    /// Slow close/open to suggest tiredness.
+    static let tiredInterval = 5.0 * 60
+    static let tiredStepDuration = 0.35
+    static let tiredSteps = 4
+    /// Expanded sweep: steps out, hold, steps back, blink.
+    static let sweepSteps = 6
+    static let sweepStepDuration = 0.5
+    static let sweepHold = 3.0
+    static let sweepPause = 1.0
+    /// How long the island keeps animating after the app goes to the background.
+    static let backgroundGrace = 20.0
 
     // MARK: Limits
     static let maxSessionSeconds = 8 * 3600

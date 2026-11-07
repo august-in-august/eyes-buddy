@@ -11,13 +11,20 @@
 - **Phase 6:** `EyesActivityController` keeps one activity, rolls over after 8 h, shows a banner when Live Activities are disabled.
 - **Phase 7:** `OnboardingScreen` (3 pages), VoiceOver labels, Reduce Motion for tracking.
 
+## Device feedback round 1
+
+- Island eyes are now lively: every 5 s both eyes blink, change to a random shared direction while closed, and open. Every 5 min they close slowly and reopen (tiredness). Minimal uses the same state as compact.
+- Expanded view: removed "Tap me to blink"; timer moved to the center region so the progress bar and "Red in / Limit" fit. Eyes run a sweep loop: left clockwise, right counter-clockwise to the opposite side (through the bottom), hold 3 s, sweep back, blink, repeat.
+- Main screen: eyes moved below the island on an extended black pill (clear of the status bar); the full-screen eye layer no longer blocks taps (settings and sleep buttons work); sleep button no longer stretches; hint area cut to ~1/5 and content moved up.
+- **Limitation:** Live Activities only change when the app pushes an update, so the animation runs only while the app is alive (foreground + 20 s after backgrounding, then it settles on an open, calm frame). Continuous animation while the app is closed needs APNs Live Activity push updates (a server), which is out of scope for v1.
+- Cadence is in `EyeStyle` (glanceInterval, tiredInterval, sweep*). iOS may throttle frequent updates; the sweep is ~1 update/s while running.
+
 ### Not done / notes
 
-- App icon and accent color from the design are **not** added yet (design deliverable 1q needs exported PNGs).
+- App icon added; accent color from the design is not set.
 - Reduce Motion: the in-app tracking spring is disabled; the blink is still an instant swap, not a fade.
 - Design uses Archivo; the app uses the system font (heavy weight) instead, as Archivo isn't bundled.
 - Not tested on a real Dynamic Island device; the manual checklist in `DEVELOPMENT_PLAN.md` §7 is still open.
-- Bundle ID is still the Xcode placeholder (`devplaceholder.…`); set a real one before shipping.
 - "Privacy policy" row from the design is omitted (no URL yet).
 
 ### Blocked

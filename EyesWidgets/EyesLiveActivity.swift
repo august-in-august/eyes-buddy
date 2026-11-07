@@ -13,22 +13,29 @@ struct EyesLiveActivity: Widget {
             let red = context.isRed
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    BlinkEye(context: context, mirrored: false, diameter: EyeStyle.expandedEye)
+                    BlinkEye(context: context, rightEye: false, diameter: EyeStyle.expandedEye, expanded: true)
+                        .padding(.top, 6)
+                        .padding(.leading, 8)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    BlinkEye(context: context, mirrored: true, diameter: EyeStyle.expandedEye)
+                    BlinkEye(context: context, rightEye: true, diameter: EyeStyle.expandedEye, expanded: true)
+                        .padding(.top, 6)
+                        .padding(.trailing, 8)
+                }
+                DynamicIslandExpandedRegion(.center) {
+                    WatchingTimer(context: context, timerSize: 24)
+                        .padding(.top, 6)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
-                    WatchingInfo(context: context, showsBlinkHint: true)
+                    ProgressFooter(context: context)
                         .padding(.horizontal, 12)
-                        .padding(.top, 4)
                 }
             } compactLeading: {
-                ContextEye(context: context, mirrored: false, diameter: EyeStyle.compactEye)
+                ContextEye(context: context, diameter: EyeStyle.compactEye)
             } compactTrailing: {
-                ContextEye(context: context, mirrored: true, diameter: EyeStyle.compactEye)
+                ContextEye(context: context, diameter: EyeStyle.compactEye)
             } minimal: {
-                ContextEye(context: context, mirrored: false, diameter: EyeStyle.minimalEye)
+                ContextEye(context: context, diameter: EyeStyle.minimalEye)
             }
             .keylineTint(red ? EyeStyle.accent : .white)
         }
@@ -44,65 +51,75 @@ extension ActivityViewContext<EyesAttributes> {
     }
 }
 
-/// One eye drawn from the activity state. The trailing eye mirrors the glance so both look inward.
+/// One eye drawn from the activity state. Compact, minimal and Lock Screen eyes look the same way.
 private struct ContextEye: View {
     let context: ActivityViewContext<EyesAttributes>
-    let mirrored: Bool
     let diameter: CGFloat
 
     var body: some View {
-        let o = context.state.pupilOffset
         EyeView(
             diameter: diameter,
-            pupilOffset: CGVector(dx: mirrored ? -o.dx : o.dx, dy: o.dy),
+            pupilOffset: context.state.pupilOffset,
             isClosed: context.state.isClosed,
-            isRed: context.isRed
+            isRed: context.isRed,
+            closure: context.state.lid
         )
     }
 }
 
 /// An eye wrapped in the blink button, with a tap target of at least 44 pt.
+/// In the expanded view the left/right eyes follow the sweep animation instead of the shared glance.
 private struct BlinkEye: View {
     let context: ActivityViewContext<EyesAttributes>
-    let mirrored: Bool
+    let rightEye: Bool
     let diameter: CGFloat
+    var expanded = false
 
     var body: some View {
         Button(intent: BlinkIntent()) {
-            ContextEye(context: context, mirrored: mirrored, diameter: diameter)
-                .frame(minWidth: EyeStyle.minTapTarget, minHeight: EyeStyle.minTapTarget)
-                .contentShape(Rectangle())
+            EyeView(
+                diameter: diameter,
+                pupilOffset: expanded ? context.state.expandedOffset(rightEye: rightEye) : context.state.pupilOffset,
+                isClosed: context.state.isClosed,
+                isRed: context.isRed,
+                closure: context.state.lid
+            )
+            .frame(minWidth: EyeStyle.minTapTarget, minHeight: EyeStyle.minTapTarget)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Blink")
     }
 }
 
-/// Kicker, timer and progress bar toward the red limit.
-private struct WatchingInfo: View {
+/// "Watching you for" label with the self-updating timer.
+private struct WatchingTimer: View {
     let context: ActivityViewContext<EyesAttributes>
-    let showsBlinkHint: Bool
+    let timerSize: CGFloat
+
+    var body: some View {
+        let red = context.isRed
+        VStack(spacing: 2) {
+            Text("Watching you for")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(EyeStyle.secondaryText)
+            Text(timerInterval: context.attributes.watchingRange, pauseTime: nil, countsDown: false, showsHours: true)
+                .font(.system(size: timerSize, weight: .heavy).monospacedDigit())
+                .foregroundStyle(red ? EyeStyle.redCopy : .white)
+                .multilineTextAlignment(.center)
+        }
+    }
+}
+
+/// Progress bar toward the red limit, with "Red in …" / the red-state copy and the limit.
+private struct ProgressFooter: View {
+    let context: ActivityViewContext<EyesAttributes>
 
     var body: some View {
         let red = context.isRed
         let redDate = context.attributes.redDate(for: context.state)
 
         VStack(spacing: 6) {
-            Text(red ? "You've been staring for a while 👀" : (showsBlinkHint ? "Tap me to blink" : "Watching you for"))
-                .font(.system(size: 11, weight: .heavy))
-                .kerning(0.9)
-                .textCase(.uppercase)
-                .foregroundStyle(red ? EyeStyle.redCopy : EyeStyle.secondaryText)
-
-            HStack(spacing: 6) {
-                Text("Watching you for")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(EyeStyle.secondaryText)
-                Text(timerInterval: context.attributes.watchingRange, pauseTime: nil, countsDown: false, showsHours: true)
-                    .font(.system(size: 22, weight: .heavy).monospacedDigit())
-                    .foregroundStyle(red ? EyeStyle.redCopy : .white)
-            }
-
             ProgressView(timerInterval: context.attributes.limitRange(for: context.state), countsDown: false) {
                 EmptyView()
             } currentValueLabel: {
@@ -113,7 +130,8 @@ private struct WatchingInfo: View {
 
             HStack {
                 if red {
-                    Text("Past your limit")
+                    Text("You've been staring for a while 👀")
+                        .foregroundStyle(EyeStyle.redCopy)
                 } else {
                     HStack(spacing: 4) {
                         Text("Red in")
@@ -121,11 +139,13 @@ private struct WatchingInfo: View {
                             .monospacedDigit()
                     }
                 }
-                Spacer()
+                Spacer(minLength: 8)
                 Text("Limit \(Self.limitLabel(context.state.redLimitSeconds))")
             }
-            .font(.system(size: 11, weight: .semibold))
+            .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(EyeStyle.secondaryText)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
         }
     }
 
@@ -139,9 +159,12 @@ private struct LockScreenView: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 14) {
-            BlinkEye(context: context, mirrored: false, diameter: EyeStyle.lockScreenEye)
-            WatchingInfo(context: context, showsBlinkHint: false)
-            BlinkEye(context: context, mirrored: true, diameter: EyeStyle.lockScreenEye)
+            BlinkEye(context: context, rightEye: false, diameter: EyeStyle.lockScreenEye)
+            VStack(spacing: 10) {
+                WatchingTimer(context: context, timerSize: 24)
+                ProgressFooter(context: context)
+            }
+            BlinkEye(context: context, rightEye: true, diameter: EyeStyle.lockScreenEye)
         }
         .padding(EyeStyle.margin)
     }
@@ -157,10 +180,18 @@ extension EyesAttributes {
 }
 
 extension EyesAttributes.ContentState {
-    fileprivate static let open = EyesAttributes.ContentState(isClosed: false, pupilOffset: CGVector(dx: 0.8, dy: 0.35), redLimitSeconds: 7200)
-    fileprivate static let closed = EyesAttributes.ContentState(isClosed: true, pupilOffset: CGVector(dx: 0.8, dy: 0.35), redLimitSeconds: 7200)
-    fileprivate static let redOpen = EyesAttributes.ContentState(isClosed: false, pupilOffset: CGVector(dx: 0.8, dy: 0.35), redLimitSeconds: 60)
-    fileprivate static let redClosed = EyesAttributes.ContentState(isClosed: true, pupilOffset: CGVector(dx: 0.8, dy: 0.35), redLimitSeconds: 60)
+    private static func sample(closed: Bool = false, lid: Double = 0, sweep: Double = -1, limit: Int) -> Self {
+        EyesAttributes.ContentState(
+            isClosed: closed, pupilOffset: CGVector(dx: 0.6, dy: -0.5),
+            lid: lid, sweep: sweep, redLimitSeconds: limit
+        )
+    }
+    fileprivate static let open = sample(limit: 7200)
+    fileprivate static let closed = sample(closed: true, limit: 7200)
+    fileprivate static let sleepy = sample(lid: 0.5, limit: 7200)
+    fileprivate static let sweeping = sample(sweep: 0.5, limit: 7200)
+    fileprivate static let redOpen = sample(limit: 60)
+    fileprivate static let redClosed = sample(closed: true, limit: 60)
 }
 
 #Preview("Compact · white", as: .dynamicIsland(.compact), using: EyesAttributes.preview) {
@@ -168,6 +199,7 @@ extension EyesAttributes.ContentState {
 } contentStates: {
     EyesAttributes.ContentState.open
     EyesAttributes.ContentState.closed
+    EyesAttributes.ContentState.sleepy
 }
 
 #Preview("Compact · red", as: .dynamicIsland(.compact), using: EyesAttributes.previewRed) {
@@ -195,6 +227,7 @@ extension EyesAttributes.ContentState {
     EyesLiveActivity()
 } contentStates: {
     EyesAttributes.ContentState.open
+    EyesAttributes.ContentState.sweeping
     EyesAttributes.ContentState.closed
 }
 

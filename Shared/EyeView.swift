@@ -9,8 +9,11 @@ nonisolated struct EyeView: View {
     var isRed: Bool = false
     /// In-app only: the 85%+ "getting tired" look.
     var isTiring: Bool = false
+    /// 0 = open ... 1 = closed. Partial values draw a lid sliding down (slow "tired" blink).
+    var closure: Double = 0
 
     var body: some View {
+        let isClosed = self.isClosed || closure >= 0.98
         let s = diameter
         let pupilD = s * EyeStyle.pupilRatio
         let offset = clamped(pupilOffset)
@@ -56,6 +59,21 @@ nonisolated struct EyeView: View {
                     : max(0.75, s * EyeStyle.tiringRimRatio)
                 Circle()
                     .strokeBorder(showsRed ? EyeStyle.accent : EyeStyle.rimTiring, lineWidth: rim)
+                    .frame(width: s, height: s)
+            }
+
+            // Partially closed: lid slides down from the top
+            if closure > 0 && !isClosed {
+                let cover = CGFloat(closure) * s * 1.05
+                let color = showsRed ? EyeStyle.shutRed : EyeStyle.shutWhite
+                LidCover(cover: cover, bulge: s * 0.14)
+                    .fill(color)
+                    .frame(width: s, height: s)
+                LidCover(cover: cover, bulge: s * 0.14, edgeOnly: true)
+                    .stroke(
+                        showsRed ? EyeStyle.lashRed : EyeStyle.lashWhite,
+                        lineWidth: max(EyeStyle.lashMinWidth, s * EyeStyle.lashRatio)
+                    )
                     .frame(width: s, height: s)
             }
 
@@ -118,6 +136,31 @@ private nonisolated struct LidShape: Shape {
             )
             return p
         }
+    }
+}
+
+/// A lid covering the top `cover` points, with a downward-bulging lower edge.
+private nonisolated struct LidCover: Shape {
+    var cover: CGFloat
+    var bulge: CGFloat
+    var edgeOnly = false
+
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        let curveStart = CGPoint(x: rect.maxX, y: cover)
+        let curveEnd = CGPoint(x: rect.minX, y: cover)
+        let control = CGPoint(x: rect.midX, y: cover + bulge * 2)
+        if edgeOnly {
+            p.move(to: curveStart)
+            p.addQuadCurve(to: curveEnd, control: control)
+        } else {
+            p.move(to: CGPoint(x: rect.minX, y: rect.minY))
+            p.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+            p.addLine(to: curveStart)
+            p.addQuadCurve(to: curveEnd, control: control)
+            p.closeSubpath()
+        }
+        return p
     }
 }
 

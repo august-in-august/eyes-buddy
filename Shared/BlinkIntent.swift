@@ -8,18 +8,14 @@ nonisolated struct BlinkIntent: LiveActivityIntent {
 
     func perform() async throws -> some IntentResult {
         for activity in Activity<EyesAttributes>.activities {
-            let limit = activity.content.state.redLimitSeconds
+            var state = activity.content.state
             // Always pass the same staleDate so a red eye stays red.
-            let stale = activity.attributes.redDate(limitSeconds: limit)
-            await activity.update(ActivityContent(
-                state: .glance(isClosed: true, redLimitSeconds: limit),
-                staleDate: stale
-            ))
+            let stale = activity.attributes.redDate(for: state)
+            state.isClosed = true
+            await activity.update(ActivityContent(state: state, staleDate: stale))
             try? await Task.sleep(for: .milliseconds(180))
-            await activity.update(ActivityContent(
-                state: .glance(redLimitSeconds: limit),
-                staleDate: stale
-            ))
+            state.isClosed = false
+            await activity.update(ActivityContent(state: state, staleDate: stale))
         }
         return .result()
     }
