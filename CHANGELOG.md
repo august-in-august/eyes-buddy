@@ -63,6 +63,13 @@
 - Island works after restarting the phone (the earlier failures were likely stuck system state, not the app).
 - Alarm sounds: removed the angry growl and the buzzer; added three angry-cat sounds (converted from the supplied mp3s to 16-bit WAV, since notification sounds can't be mp3). Default is now "Hunn!"; a saved choice of the removed growl falls back to it.
 
+## Release prep
+
+- Category was set to Games; now Productivity. Home-screen name "Eyes Buddy". Portrait only on iPhone. `ITSAppUsesNonExemptEncryption = NO`.
+- The widget extension required iOS 27.2 while the app supports 17.6; both are now 17.6.
+- Added `PrivacyInfo.xcprivacy` (UserDefaults, reasons CA92.1 and 1C8F.1) to the app and the widget; no tracking, no collected data.
+- Added `APP_STORE_LISTING.md` (10 languages, limits checked) and `PRIVACY.md`.
+
 ### Not done / notes
 
 
