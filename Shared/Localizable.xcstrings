@@ -4169,6 +4169,71 @@
         }
       }
     },
+    "The eyes couldn't start in the Dynamic Island." : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "تعذّر تشغيل العينين في Dynamic Island."
+          }
+        },
+        "de" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Die Augen konnten in der Dynamic Island nicht gestartet werden."
+          }
+        },
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "The eyes couldn't start in the Dynamic Island."
+          }
+        },
+        "es" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Los ojos no pudieron iniciarse en la Dynamic Island."
+          }
+        },
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les yeux n'ont pas pu démarrer dans la Dynamic Island."
+          }
+        },
+        "hi" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "आँखें Dynamic Island में शुरू नहीं हो सकीं।"
+          }
+        },
+        "ja" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "目をダイナミックアイランドに表示できませんでした。"
+          }
+        },
+        "ko" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "눈을 Dynamic Island에 표시하지 못했어요."
+          }
+        },
+        "ru" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Не удалось запустить глаза в Dynamic Island."
+          }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "眼睛无法在灵动岛中启动。"
+          }
+        }
+      }
+    },
     "They live in your Dynamic Island" : {
       "extractionState" : "manual",
       "localizations" : {

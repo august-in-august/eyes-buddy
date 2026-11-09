@@ -141,11 +141,29 @@ struct MainScreen: View {
                     .padding(.top, 8)
             }
 
+            if let error = controller.activityError, controller.isRunning, controller.islandEnabled, controller.activitiesEnabled {
+                startFailedNote(error)
+                    .padding(.top, 8)
+            }
+
             TimerPanel(bigSize: layout.hasIsland ? 80 : 64)
 
             SettingsSections()
                 .padding(.top, 32)
         }
+    }
+
+    /// Shown when the system refused to start the island eyes, with its reason, so it can be diagnosed.
+    private func startFailedNote(_ reason: String) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(L("The eyes couldn't start in the Dynamic Island."))
+                .font(.system(size: 13, weight: .heavy))
+            Text(reason)
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(EyeStyle.secondaryText)
+        }
+        .foregroundStyle(EyeStyle.redCopy)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var disabledBanner: some View {

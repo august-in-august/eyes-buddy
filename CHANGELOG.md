@@ -51,6 +51,13 @@
 
 - Starting a timer through iPhone Mirroring left the island empty. Most likely ActivityKit refused the request (`visibility`: the app isn't visible on the phone) and the error was swallowed. The error is now logged (subsystem `com.guangyang.eyesbuddy`, category `activity`) and starting is retried every 2 s for up to a minute, and again whenever the app becomes active or the phone is unlocked. Unverified on device.
 
+## Feedback round 6
+
+- Island eyes missing even without iPhone Mirroring: suspected leftover scheduled "time's up" activities from earlier timers counting toward the per-app Live Activity limit (a pending activity may not be listed in `Activity.activities`). The scheduled activity is now ended through a stored handle; on a `targetMaximumExceeded` / `globalMaximumExceeded` error everything is cleared and the start is retried once.
+- When the system refuses to start the island eyes, the reason is now shown in red on the main page (and logged), so the cause can be read instead of guessed.
+- Overlapping `startIfNeeded` calls (scene change, unlock, timer end, retries) are merged so two runs can't both create an activity.
+- The repeated end-of-timer notifications (12, 5 s apart) also reach an Apple Watch and a Mac; iOS forwards them. Reduce `TimerNotifications.repeatCount` if that is too much.
+
 ### Not done / notes
 
 

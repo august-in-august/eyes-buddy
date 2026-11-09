@@ -19,6 +19,8 @@ final class EyesActivityController {
     private(set) var totalSeconds: Int
     private(set) var islandEnabled: Bool
     private(set) var activitiesEnabled: Bool
+    /// Why the island eyes couldn't start, if the system refused (shown on the main page).
+    private(set) var activityError: String?
 
     private let authorization = ActivityAuthorizationInfo()
     @ObservationIgnored private var enablementTask: Task<Void, Never>?
@@ -27,8 +29,13 @@ final class EyesActivityController {
     @ObservationIgnored private var tiredActive = false
     /// The end time the pending "time's up" activity was scheduled for.
     @ObservationIgnored private var timesUpScheduledFor: Date?
+    /// Handle to the scheduled "time's up" activity. A pending activity may not show up in
+    /// `Activity.activities`, and leaked ones count toward the per-app limit, so it is ended through this.
+    @ObservationIgnored private var timesUpHandle: Activity<EyesAttributes>?
     /// Retries starting the activity when the system refused (e.g. the app isn't visible on the phone).
     @ObservationIgnored private var activityRetryTask: Task<Void, Never>?
+    @ObservationIgnored private var isSyncing = false
+    @ObservationIgnored private var syncAgain = false
     @ObservationIgnored private var wakeTasks: [Task<Void, Never>] = []
     private static let log = Logger(subsystem: "com.guangyang.eyesbuddy", category: "activity")
 
@@ -133,7 +140,22 @@ final class EyesActivityController {
     // MARK: Lifecycle
 
     /// Run on launch and whenever the scene becomes active: makes the activity match the timer.
+    /// Overlapping calls (scene change, unlock, timer end, ...) are merged so two runs can never
+    /// both create an activity.
     func startIfNeeded() async {
+        if isSyncing {
+            syncAgain = true
+            return
+        }
+        isSyncing = true
+        repeat {
+            syncAgain = false
+            await syncActivities()
+        } while syncAgain
+        isSyncing = false
+    }
+
+    private func syncActivities() async {
         cancelBackgroundGrace()
         activitiesEnabled = authorization.areActivitiesEnabled
         resumeAlarmIfNeeded()
@@ -162,8 +184,7 @@ final class EyesActivityController {
             if let current = runningActivities.first, current.attributes.sessionStart == start {
                 await push(to: current)
                 // Red is showing; drop the standby one only after, so the island never goes blank.
-                for activity in timesUpActivities { await activity.end(nil, dismissalPolicy: .immediate) }
-                timesUpScheduledFor = nil
+                await endTimesUpActivities()
             } else {
                 // The running activity is gone (e.g. dismissed); fall back to the red one.
                 await ensureTimesUpActivity(start: start, scheduled: false)
@@ -209,8 +230,7 @@ final class EyesActivityController {
             // Already there for this end time (or already started): leave it alone.
             if !scheduled || timesUpScheduledFor == endDate { return }
         }
-        for activity in existing { await activity.end(nil, dismissalPolicy: .immediate) }
-        timesUpScheduledFor = nil
+        await endTimesUpActivities()
 
         let attributes = EyesAttributes(sessionStart: start, isTimesUp: true)
         var state = EyesAttributes.ContentState.make(redLimitSeconds: totalSeconds)
@@ -227,7 +247,7 @@ final class EyesActivityController {
                     body: LocalizedStringResource(String.LocalizationValue(L("Your eyes are red. 👀"))),
                     sound: .named("silence.wav")
                 )
-                _ = try Activity.request(
+                timesUpHandle = try Activity.request(
                     attributes: attributes, content: content, pushType: nil,
                     style: .standard, alertConfiguration: alert,
                     // Starts a little early: the system needs a moment to present the alert, and this
@@ -236,11 +256,20 @@ final class EyesActivityController {
                 )
                 timesUpScheduledFor = end
             } else {
-                _ = try Activity.request(attributes: attributes, content: content, pushType: nil)
+                timesUpHandle = try Activity.request(attributes: attributes, content: content, pushType: nil)
             }
         } catch {
+            Self.log.error("time's-up activity request failed: \(String(describing: error), privacy: .public)")
             activitiesEnabled = authorization.areActivitiesEnabled
         }
+    }
+
+    /// Ends every "time's up" activity, including the pending one we hold a handle to.
+    private func endTimesUpActivities() async {
+        for activity in timesUpActivities { await activity.end(nil, dismissalPolicy: .immediate) }
+        if let handle = timesUpHandle { await handle.end(nil, dismissalPolicy: .immediate) }
+        timesUpHandle = nil
+        timesUpScheduledFor = nil
     }
 
     /// Keep animating briefly while iOS lets the process run, then settle on a calm frame.
@@ -296,7 +325,7 @@ final class EyesActivityController {
         scheduleEnd()
     }
 
-    private func startActivity(sessionStart: Date) {
+    private func startActivity(sessionStart: Date, isRetryAfterCleanup: Bool = false) {
         let attributes = EyesAttributes(sessionStart: sessionStart)
         live.redLimitSeconds = totalSeconds
         do {
@@ -307,10 +336,27 @@ final class EyesActivityController {
             )
             activityRetryTask?.cancel()
             activityRetryTask = nil
+            activityError = nil
         } catch {
             // Typically `.visibility`: the app wasn't visible on the phone (iPhone Mirroring, locked).
             Self.log.error("Live Activity request failed: \(String(describing: error), privacy: .public)")
             activitiesEnabled = authorization.areActivitiesEnabled
+            activityError = String(describing: error)
+            // Too many activities left over from earlier timers: clear them all and try once more.
+            if !isRetryAfterCleanup,
+               let authError = error as? ActivityAuthorizationError,
+               authError == .targetMaximumExceeded || authError == .globalMaximumExceeded {
+                Task {
+                    await endAll()
+                    for activity in Activity<EyesAttributes>.activities { await activity.end(nil, dismissalPolicy: .immediate) }
+                    startActivity(sessionStart: sessionStart, isRetryAfterCleanup: true)
+                    if !runningActivities.isEmpty {
+                        await ensureTimesUpActivity(start: sessionStart, scheduled: true)
+                        startAnimating()
+                    }
+                }
+                return
+            }
             scheduleActivityRetry()
         }
     }
@@ -344,7 +390,7 @@ final class EyesActivityController {
 
     private func endAll() async {
         stopAnimating()
-        timesUpScheduledFor = nil
+        await endTimesUpActivities()
         for activity in Activity<EyesAttributes>.activities {
             await activity.end(nil, dismissalPolicy: .immediate)
         }
