@@ -47,6 +47,10 @@
 - If the app is alive at the end (foreground or the 20 s background grace) the running activity itself turns red and the standby one is dropped, so there is no gap. The standby one only covers a suspended app.
 - Known limit: the Mac menu bar mirrors the running activity but apparently not the system-started red one, so with the app suspended it stays white at 0:00 until the app is opened.
 
+## Feedback round 5
+
+- Starting a timer through iPhone Mirroring left the island empty. Most likely ActivityKit refused the request (`visibility`: the app isn't visible on the phone) and the error was swallowed. The error is now logged (subsystem `com.guangyang.eyesbuddy`, category `activity`) and starting is retried every 2 s for up to a minute, and again whenever the app becomes active or the phone is unlocked. Unverified on device.
+
 ### Not done / notes
 
 

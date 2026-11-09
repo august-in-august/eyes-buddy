@@ -1,6 +1,7 @@
 import ActivityKit
 import Foundation
 import Observation
+import OSLog
 import UIKit
 
 /// Owns the timer and the single Live Activity that mirrors it.
@@ -26,6 +27,10 @@ final class EyesActivityController {
     @ObservationIgnored private var tiredActive = false
     /// The end time the pending "time's up" activity was scheduled for.
     @ObservationIgnored private var timesUpScheduledFor: Date?
+    /// Retries starting the activity when the system refused (e.g. the app isn't visible on the phone).
+    @ObservationIgnored private var activityRetryTask: Task<Void, Never>?
+    @ObservationIgnored private var wakeTasks: [Task<Void, Never>] = []
+    private static let log = Logger(subsystem: "com.guangyang.eyesbuddy", category: "activity")
 
     // Animation
     @ObservationIgnored private var live: EyesAttributes.ContentState
@@ -50,6 +55,16 @@ final class EyesActivityController {
             scheduleEnd()
         } else {
             SharedSettings.timerStart = nil
+        }
+
+        // The phone becoming usable again (unlock, or leaving iPhone Mirroring) is a chance to start
+        // an activity that was refused while the app wasn't visible.
+        for name in [UIApplication.didBecomeActiveNotification, UIApplication.protectedDataDidBecomeAvailableNotification] {
+            wakeTasks.append(Task { [weak self] in
+                for await _ in NotificationCenter.default.notifications(named: name) {
+                    await self?.startIfNeeded()
+                }
+            })
         }
 
         enablementTask = Task { [weak self] in
@@ -290,8 +305,27 @@ final class EyesActivityController {
                 content: ActivityContent(state: live, staleDate: nil),
                 pushType: nil
             )
+            activityRetryTask?.cancel()
+            activityRetryTask = nil
         } catch {
+            // Typically `.visibility`: the app wasn't visible on the phone (iPhone Mirroring, locked).
+            Self.log.error("Live Activity request failed: \(String(describing: error), privacy: .public)")
             activitiesEnabled = authorization.areActivitiesEnabled
+            scheduleActivityRetry()
+        }
+    }
+
+    /// Keeps trying for a minute so the island eyes appear as soon as the system allows it.
+    private func scheduleActivityRetry() {
+        guard activityRetryTask == nil else { return }
+        activityRetryTask = Task { [weak self] in
+            for _ in 0..<30 {
+                guard await self?.pause(2) == true else { break }
+                guard let self, self.isRunning, self.islandEnabled, self.runningActivities.isEmpty else { break }
+                await self.startIfNeeded()
+                if !self.runningActivities.isEmpty { break }
+            }
+            self?.activityRetryTask = nil
         }
     }
 
