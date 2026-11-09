@@ -58,6 +58,11 @@
 - Overlapping `startIfNeeded` calls (scene change, unlock, timer end, retries) are merged so two runs can't both create an activity.
 - The repeated end-of-timer notifications (12, 5 s apart) also reach an Apple Watch and a Mac; iOS forwards them. Reduce `TimerNotifications.repeatCount` if that is too much.
 
+## Feedback round 7
+
+- Island works after restarting the phone (the earlier failures were likely stuck system state, not the app).
+- Alarm sounds: removed the angry growl and the buzzer; added three angry-cat sounds (converted from the supplied mp3s to 16-bit WAV, since notification sounds can't be mp3). Default is now "Hunn!"; a saved choice of the removed growl falls back to it.
+
 ### Not done / notes
 
 

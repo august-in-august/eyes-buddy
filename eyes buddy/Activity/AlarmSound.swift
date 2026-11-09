@@ -2,16 +2,17 @@ import Foundation
 
 /// The alarm sounds the user can choose from. Files live in `Resources/`.
 enum AlarmSound: String, CaseIterable, Identifiable {
-    case growl, hunn, buzzer, beeps, siren, chime
+    case hunn, cat1, cat2, cat3, beeps, siren, chime
 
     var id: String { rawValue }
     var fileName: String { "\(rawValue).wav" }
 
     var title: String {
         switch self {
-        case .growl: L("Angry growl")
         case .hunn: L("Hunn!")
-        case .buzzer: L("Buzzer")
+        case .cat1: L("Angry cat %@", "1")
+        case .cat2: L("Angry cat %@", "2")
+        case .cat3: L("Angry cat %@", "3")
         case .beeps: L("Alarm clock")
         case .siren: L("Siren")
         case .chime: L("Chime")
@@ -20,16 +21,16 @@ enum AlarmSound: String, CaseIterable, Identifiable {
 
     var subtitle: String {
         switch self {
-        case .growl: L("Three grumpy growls")
         case .hunn: L("A huffy grunt, like someone got annoyed")
-        case .buzzer: L("Harsh double buzz")
+        case .cat1, .cat2, .cat3: L("A very annoyed cat")
         case .beeps: L("Classic digital beeps")
         case .siren: L("Rising and falling wail")
         case .chime: L("Two soft bells")
         }
     }
 
+    /// Falls back to "Hunn!" if the saved choice no longer exists (e.g. the removed growl).
     static var selected: AlarmSound {
-        AlarmSound(rawValue: SharedSettings.alarmSoundID) ?? .growl
+        AlarmSound(rawValue: SharedSettings.alarmSoundID) ?? .hunn
     }
 }

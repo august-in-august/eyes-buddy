@@ -69,7 +69,7 @@ nonisolated enum SharedSettings {
 
     /// Raw value of the chosen `AlarmSound`.
     static var alarmSoundID: String {
-        get { defaults.string(forKey: Key.alarmSoundID) ?? "growl" }
+        get { defaults.string(forKey: Key.alarmSoundID) ?? "hunn" }
         set { defaults.set(newValue, forKey: Key.alarmSoundID) }
     }
 
