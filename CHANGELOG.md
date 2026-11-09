@@ -40,6 +40,13 @@
 - **Languages:** English, 简体中文, 日本語, 한국어, Español, Русский, हिन्दी, العربية (RTL), Deutsch, Français. Default follows the system language, English if unsupported (any Chinese maps to Simplified). Language menu in the main page and the onboarding top bar. Strings live in `Shared/Localizable.xcstrings`, looked up through `L()` so the in-app choice applies to the app, notifications and the Live Activity. Translations were written by me, not by a native-speaker review.
 - Disabled string-catalog symbol generation (keys such as "Time's up" and "Time's up!" collided).
 
+## Feedback round 4
+
+- Removed the stale date from the running activity: a stale activity can be hidden from the island and the Mac menu bar, and it never re-rendered red anyway.
+- The red "time's up" activity now starts `EyeStyle.timesUpLead` (2 s) before the end, because the system needs a moment to present its alert; it shows 0:00.
+- If the app is alive at the end (foreground or the 20 s background grace) the running activity itself turns red and the standby one is dropped, so there is no gap. The standby one only covers a suspended app.
+- Known limit: the Mac menu bar mirrors the running activity but apparently not the system-started red one, so with the app suspended it stays white at 0:00 until the app is opened.
+
 ### Not done / notes
 
 

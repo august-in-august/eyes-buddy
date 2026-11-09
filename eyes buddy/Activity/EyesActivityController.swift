@@ -67,6 +67,7 @@ final class EyesActivityController {
     func startTimer() async {
         AlarmPlayer.shared.stop()
         await endAll()
+        live = .make(redLimitSeconds: totalSeconds)
         startDate = .now
         SharedSettings.timerStart = startDate
         SharedSettings.lastTimerSeconds = totalSeconds
@@ -134,11 +135,24 @@ final class EyesActivityController {
         }
         guard activitiesEnabled else { return }
 
-        // Time is up: only the red "time's up" activity stays in the island.
+        // Time is up and this process is running, so turn the running activity red itself: no gap,
+        // and the standby "time's up" activity (meant for a suspended app) isn't needed.
         if let end = endDate, Date.now >= end {
             stopAnimating()
-            for activity in runningActivities { await activity.end(nil, dismissalPolicy: .immediate) }
-            await ensureTimesUpActivity(start: start, scheduled: false)
+            live.isClosed = false
+            live.lid = 0
+            live.sweep = -1
+            live.finished = true
+            live.pupilOffset = CGVector(dx: 0, dy: 0.6)
+            if let current = runningActivities.first, current.attributes.sessionStart == start {
+                await push(to: current)
+                // Red is showing; drop the standby one only after, so the island never goes blank.
+                for activity in timesUpActivities { await activity.end(nil, dismissalPolicy: .immediate) }
+                timesUpScheduledFor = nil
+            } else {
+                // The running activity is gone (e.g. dismissed); fall back to the red one.
+                await ensureTimesUpActivity(start: start, scheduled: false)
+            }
             return
         }
 
@@ -186,7 +200,8 @@ final class EyesActivityController {
         let attributes = EyesAttributes(sessionStart: start, isTimesUp: true)
         var state = EyesAttributes.ContentState.make(redLimitSeconds: totalSeconds)
         state.pupilOffset = CGVector(dx: 0, dy: 0.6)
-        // Highest relevance so it takes the main island slot over the (possibly stale) running one.
+        state.finished = true
+        // Highest relevance so it takes the main island slot over the running one.
         let content = ActivityContent(state: state, staleDate: nil, relevanceScore: 100)
         do {
             if scheduled, let end = endDate, end > .now {
@@ -199,7 +214,10 @@ final class EyesActivityController {
                 )
                 _ = try Activity.request(
                     attributes: attributes, content: content, pushType: nil,
-                    style: .standard, alertConfiguration: alert, start: end
+                    style: .standard, alertConfiguration: alert,
+                    // Starts a little early: the system needs a moment to present the alert, and this
+                    // way the red eyes land together with the notification sound.
+                    start: max(.now.addingTimeInterval(1), end.addingTimeInterval(-EyeStyle.timesUpLead))
                 )
                 timesUpScheduledFor = end
             } else {
@@ -269,7 +287,7 @@ final class EyesActivityController {
         do {
             _ = try Activity.request(
                 attributes: attributes,
-                content: ActivityContent(state: live, staleDate: attributes.redDate(for: live)),
+                content: ActivityContent(state: live, staleDate: nil),
                 pushType: nil
             )
         } catch {
@@ -282,7 +300,7 @@ final class EyesActivityController {
         live.redLimitSeconds = totalSeconds
         await activity.update(ActivityContent(
             state: live,
-            staleDate: activity.attributes.redDate(for: live)
+            staleDate: nil
         ))
     }
 

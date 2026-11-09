@@ -83,6 +83,9 @@ nonisolated enum EyeStyle {
     static let sweepStepDuration = 0.5
     static let sweepHold = 3.0
     static let sweepPause = 1.0
+    /// The red "time's up" activity is scheduled this many seconds before the end, because the system
+    /// takes a moment to present it. Tune this if the red eyes show up early or late.
+    static let timesUpLead = 2.0
     /// How long the island keeps animating after the app goes to the background.
     static let backgroundGrace = 20.0
 

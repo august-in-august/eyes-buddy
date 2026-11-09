@@ -9,8 +9,8 @@ nonisolated struct BlinkIntent: LiveActivityIntent {
     func perform() async throws -> some IntentResult {
         for activity in Activity<EyesAttributes>.activities {
             var state = activity.content.state
-            // Always pass the same staleDate so a red eye stays red.
-            let stale = activity.attributes.redDate(for: state)
+            // No stale date: a stale activity can be hidden from the island and the Mac menu bar.
+            let stale: Date? = nil
             // Half-lidded frames either side of the closed one make the blink read as smooth.
             let originalLid = state.lid
             state.lid = 0.5

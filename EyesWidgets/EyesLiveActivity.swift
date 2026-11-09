@@ -54,7 +54,7 @@ extension View {
 extension ActivityViewContext<EyesAttributes> {
     /// `isStale` is the real trigger (staleDate); the date check keeps previews and late renders honest.
     var isRed: Bool {
-        attributes.isTimesUp || isStale || attributes.redDate(for: state) <= .now
+        attributes.isTimesUp || state.finished || isStale || attributes.redDate(for: state) <= .now
     }
 }
 
@@ -110,17 +110,27 @@ private struct WatchingTimer: View {
             Text(L("Time left"))
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(EyeStyle.secondaryText)
+            countdown
+                .font(.system(size: timerSize, weight: .heavy).monospacedDigit())
+                .foregroundStyle(red ? EyeStyle.redCopy : .white)
+                .multilineTextAlignment(.center)
+        }
+        .appLayoutDirection()
+    }
+
+    /// The time-left countdown; the red "time's up" activity can start a moment early, so it shows 0:00.
+    @ViewBuilder
+    private var countdown: some View {
+        if context.attributes.isTimesUp || context.state.finished {
+            Text(verbatim: context.state.redLimitSeconds >= 3600 ? "0:00:00" : "0:00")
+        } else {
             Text(
                 timerInterval: context.attributes.limitRange(for: context.state),
                 pauseTime: nil,
                 countsDown: true,
                 showsHours: context.state.redLimitSeconds >= 3600
             )
-                .font(.system(size: timerSize, weight: .heavy).monospacedDigit())
-                .foregroundStyle(red ? EyeStyle.redCopy : .white)
-                .multilineTextAlignment(.center)
         }
-        .appLayoutDirection()
     }
 }
 

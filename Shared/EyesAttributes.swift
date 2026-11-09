@@ -19,6 +19,8 @@ nonisolated struct EyesAttributes: ActivityAttributes {
         /// Expanded view only: < 0 = resting, 0...1 = progress of the sweep to the opposite side.
         var sweep: Double
         var redLimitSeconds: Int
+        /// Set once time is up, so the views turn red even if no re-render happens at the end time.
+        var finished = false
 
         static func make(redLimitSeconds: Int) -> ContentState {
             ContentState(isClosed: false, pupilOffset: randomGlance(), lid: 0, sweep: -1, redLimitSeconds: redLimitSeconds)
