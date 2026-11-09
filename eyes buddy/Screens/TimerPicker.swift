@@ -18,11 +18,11 @@ struct TimerPicker: View {
 
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                Text(isEditing ? "Tap a time to change it." : "Tap a time to set the timer.")
+                Text(L(isEditing ? "Tap a time to change it." : "Tap a time to set the timer."))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(EyeStyle.secondaryText)
                 Spacer()
-                Button(isEditing ? "Done" : "Edit times") { isEditing.toggle() }
+                Button(L(isEditing ? "Done" : "Edit times")) { isEditing.toggle() }
                     .font(.system(size: 13, weight: .heavy))
                     .foregroundStyle(.white)
                     .frame(minHeight: EyeStyle.minTapTarget)
@@ -40,7 +40,7 @@ struct TimerPicker: View {
                         }
                     }
                 }
-                chip("Custom", selected: isCustom, editable: false) {
+                chip(L("Custom"), selected: isCustom, editable: false) {
                     isEditing = false
                     customSelected = true
                 }
@@ -55,6 +55,7 @@ struct TimerPicker: View {
             QuickTimeEditor(initial: quickTimes[slot.id]) { newValue in
                 quickTimes[slot.id] = newValue
                 SharedSettings.quickTimes = quickTimes
+                QuickActions.shared.refresh()
             }
             .presentationDetents([.height(380)])
         }
@@ -89,13 +90,13 @@ struct TimeWheel: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            wheel(0...(SharedSettings.maxTotal / 3600 - 1), unit: "h", value: seconds / 3600) {
+            wheel(0...(SharedSettings.maxTotal / 3600 - 1), unit: L("wheel.h"), value: seconds / 3600) {
                 set(hours: $0, minutes: seconds % 3600 / 60, seconds: seconds % 60)
             }
-            wheel(0...59, unit: "min", value: seconds % 3600 / 60) {
+            wheel(0...59, unit: L("wheel.min"), value: seconds % 3600 / 60) {
                 set(hours: seconds / 3600, minutes: $0, seconds: seconds % 60)
             }
-            wheel(0...59, unit: "s", value: seconds % 60) {
+            wheel(0...59, unit: L("wheel.s"), value: seconds % 60) {
                 set(hours: seconds / 3600, minutes: seconds % 3600 / 60, seconds: $0)
             }
         }
@@ -143,11 +144,11 @@ private struct QuickTimeEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HStack {
-                Button("Cancel") { dismiss() }
+                Button(L("Cancel")) { dismiss() }
                 Spacer()
-                Text("Quick time").font(.system(size: 17, weight: .heavy))
+                Text(L("Quick time")).font(.system(size: 17, weight: .heavy))
                 Spacer()
-                Button("Save") { onSave(value); dismiss() }
+                Button(L("Save")) { onSave(value); dismiss() }
             }
             .font(.system(size: 17, weight: .heavy))
             Text(DurationFormat.short(value))

@@ -12,6 +12,8 @@ nonisolated enum SharedSettings {
         static let quickTimes = "quickTimes"
         static let alarmSound = "alarmSound"
         static let alarmSoundID = "alarmSoundID"
+        static let languageCode = "languageCode"
+        static let lastTimer = "lastTimerSeconds"
     }
 
     // Falls back to standard defaults if the group container is unavailable (e.g. unsigned builds).
@@ -69,6 +71,21 @@ nonisolated enum SharedSettings {
     static var alarmSoundID: String {
         get { defaults.string(forKey: Key.alarmSoundID) ?? "growl" }
         set { defaults.set(newValue, forKey: Key.alarmSoundID) }
+    }
+
+    /// Raw value of the chosen `AppLanguage`; "system" follows the device language.
+    static var languageCode: String {
+        get { defaults.string(forKey: Key.languageCode) ?? "system" }
+        set { defaults.set(newValue, forKey: Key.languageCode) }
+    }
+
+    /// Length of the most recently started timer (for the "last timer" quick action).
+    static var lastTimerSeconds: Int {
+        get {
+            let v = defaults.integer(forKey: Key.lastTimer)
+            return v == 0 ? totalSeconds : clampTotal(v)
+        }
+        set { defaults.set(clampTotal(newValue), forKey: Key.lastTimer) }
     }
 
     static var onboardingDone: Bool {

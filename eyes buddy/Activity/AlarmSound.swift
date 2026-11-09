@@ -9,23 +9,23 @@ enum AlarmSound: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .growl: "Angry growl"
-        case .hunn: "Hunn!"
-        case .buzzer: "Buzzer"
-        case .beeps: "Alarm clock"
-        case .siren: "Siren"
-        case .chime: "Chime"
+        case .growl: L("Angry growl")
+        case .hunn: L("Hunn!")
+        case .buzzer: L("Buzzer")
+        case .beeps: L("Alarm clock")
+        case .siren: L("Siren")
+        case .chime: L("Chime")
         }
     }
 
     var subtitle: String {
         switch self {
-        case .growl: "Three grumpy growls"
-        case .hunn: "A huffy grunt, like someone got annoyed"
-        case .buzzer: "Harsh double buzz"
-        case .beeps: "Classic digital beeps"
-        case .siren: "Rising and falling wail"
-        case .chime: "Two soft bells"
+        case .growl: L("Three grumpy growls")
+        case .hunn: L("A huffy grunt, like someone got annoyed")
+        case .buzzer: L("Harsh double buzz")
+        case .beeps: L("Classic digital beeps")
+        case .siren: L("Rising and falling wail")
+        case .chime: L("Two soft bells")
         }
     }
 

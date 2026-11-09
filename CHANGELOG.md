@@ -33,6 +33,13 @@
 - App icon picker: Red (default), Light (the no-background icon on white), Mono (grayscale). All keep the black icon for dark mode and the grayscale one for tinted mode.
 - Island blink is slower and stepped: lid slides down in 3 steps, stays shut 0.4 s while the eyes pick a new direction, then slides up in 3 steps. Tap-to-blink got half-lidded frames too.
 
+## Feedback round 3
+
+- **Island not turning red in the background:** the running activity relied on `staleDate` alone, which the system doesn't reliably re-render in the island while the app is suspended. A second, always-red "time's up" Live Activity is now scheduled (`Activity.request(..., start: endDate)`, iOS 26+) when a timer starts; the system starts it at the end time with the app suspended, with a higher relevance score so it takes the main island slot. Its alert is silent (`silence.wav`) because the sound comes from the notifications. If the app is alive at the end, or when you return, the old white activity is ended so only the red one remains. Unverified on device.
+- **Quick actions:** long-press the app icon for three timers: last used, then the first two quick times (repeats skipped). Tapping one starts that timer. Rebuilt whenever a timer starts, quick times are edited, or the language changes.
+- **Languages:** English, 简体中文, 日本語, 한국어, Español, Русский, हिन्दी, العربية (RTL), Deutsch, Français. Default follows the system language, English if unsupported (any Chinese maps to Simplified). Language menu in the main page and the onboarding top bar. Strings live in `Shared/Localizable.xcstrings`, looked up through `L()` so the in-app choice applies to the app, notifications and the Live Activity. Translations were written by me, not by a native-speaker review.
+- Disabled string-catalog symbol generation (keys such as "Time's up" and "Time's up!" collided).
+
 ### Not done / notes
 
 

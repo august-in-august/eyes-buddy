@@ -24,6 +24,8 @@ final class EyesActivityController {
     @ObservationIgnored private var endTask: Task<Void, Never>?
     /// True while the slow tired close runs, so the normal blink doesn't fight over the lid.
     @ObservationIgnored private var tiredActive = false
+    /// The end time the pending "time's up" activity was scheduled for.
+    @ObservationIgnored private var timesUpScheduledFor: Date?
 
     // Animation
     @ObservationIgnored private var live: EyesAttributes.ContentState
@@ -67,8 +69,24 @@ final class EyesActivityController {
         await endAll()
         startDate = .now
         SharedSettings.timerStart = startDate
+        SharedSettings.lastTimerSeconds = totalSeconds
+        QuickActions.shared.refresh()
         scheduleEnd()
         await startIfNeeded()
+    }
+
+    /// Start a timer of a specific length (used by the home-screen quick actions).
+    func startTimer(seconds: Int) async {
+        SharedSettings.totalSeconds = seconds
+        totalSeconds = SharedSettings.totalSeconds
+        await startTimer()
+    }
+
+    /// The app language changed: refresh everything that was built with the old language.
+    func languageChanged() {
+        QuickActions.shared.refresh()
+        alarmSettingsChanged()
+        Task { await startIfNeeded() }
     }
 
     /// Stop the timer and the alarm, and take the eyes out of the island.
@@ -86,7 +104,8 @@ final class EyesActivityController {
         totalSeconds = SharedSettings.totalSeconds
         guard isRunning else { return }
         scheduleEnd()
-        for activity in Activity<EyesAttributes>.activities { await push(to: activity) }
+        // Re-syncs the running activity and re-schedules the "time's up" one for the new end.
+        await startIfNeeded()
     }
 
     func setIslandEnabled(_ enabled: Bool) async {
@@ -115,7 +134,15 @@ final class EyesActivityController {
         }
         guard activitiesEnabled else { return }
 
-        let running = Activity<EyesAttributes>.activities
+        // Time is up: only the red "time's up" activity stays in the island.
+        if let end = endDate, Date.now >= end {
+            stopAnimating()
+            for activity in runningActivities { await activity.end(nil, dismissalPolicy: .immediate) }
+            await ensureTimesUpActivity(start: start, scheduled: false)
+            return
+        }
+
+        let running = runningActivities
         if let current = running.first {
             // Keep exactly one.
             for extra in running.dropFirst() { await extra.end(nil, dismissalPolicy: .immediate) }
@@ -123,12 +150,64 @@ final class EyesActivityController {
                 await current.end(nil, dismissalPolicy: .immediate)
             } else {
                 await push(to: current)
+                await ensureTimesUpActivity(start: start, scheduled: true)
                 startAnimating()
                 return
             }
         }
         startActivity(sessionStart: start)
+        await ensureTimesUpActivity(start: start, scheduled: true)
         startAnimating()
+    }
+
+    private var runningActivities: [Activity<EyesAttributes>] {
+        Activity<EyesAttributes>.activities.filter { !$0.attributes.isTimesUp }
+    }
+
+    private var timesUpActivities: [Activity<EyesAttributes>] {
+        Activity<EyesAttributes>.activities.filter { $0.attributes.isTimesUp }
+    }
+
+    /// The system can't be asked to update the running activity while the app is suspended, so a
+    /// second, always-red activity is scheduled to start at the end time. The system starts it on
+    /// its own (with a silent alert that lights the island); its sound comes from the notifications.
+    /// `scheduled == false` means time is already up, so it is started right away if missing.
+    private func ensureTimesUpActivity(start: Date, scheduled: Bool) async {
+        let existing = timesUpActivities
+        let matching = existing.first { $0.attributes.sessionStart == start }
+        if let matching {
+            for extra in existing where extra.id != matching.id { await extra.end(nil, dismissalPolicy: .immediate) }
+            // Already there for this end time (or already started): leave it alone.
+            if !scheduled || timesUpScheduledFor == endDate { return }
+        }
+        for activity in existing { await activity.end(nil, dismissalPolicy: .immediate) }
+        timesUpScheduledFor = nil
+
+        let attributes = EyesAttributes(sessionStart: start, isTimesUp: true)
+        var state = EyesAttributes.ContentState.make(redLimitSeconds: totalSeconds)
+        state.pupilOffset = CGVector(dx: 0, dy: 0.6)
+        // Highest relevance so it takes the main island slot over the (possibly stale) running one.
+        let content = ActivityContent(state: state, staleDate: nil, relevanceScore: 100)
+        do {
+            if scheduled, let end = endDate, end > .now {
+                // Scheduled starts need iOS 26; older systems rely on the stale date alone.
+                guard #available(iOS 26.0, *) else { return }
+                let alert = AlertConfiguration(
+                    title: LocalizedStringResource(String.LocalizationValue(L("Time's up!"))),
+                    body: LocalizedStringResource(String.LocalizationValue(L("Your eyes are red. 👀"))),
+                    sound: .named("silence.wav")
+                )
+                _ = try Activity.request(
+                    attributes: attributes, content: content, pushType: nil,
+                    style: .standard, alertConfiguration: alert, start: end
+                )
+                timesUpScheduledFor = end
+            } else {
+                _ = try Activity.request(attributes: attributes, content: content, pushType: nil)
+            }
+        } catch {
+            activitiesEnabled = authorization.areActivitiesEnabled
+        }
     }
 
     /// Keep animating briefly while iOS lets the process run, then settle on a calm frame.
@@ -162,18 +241,19 @@ final class EyesActivityController {
         }
     }
 
+    /// The process was alive at the end time (foreground or background grace): hand the island over
+    /// to the red activity. The sound is started inside `startIfNeeded` when the app is visible.
     private func timerDidEnd(at end: Date) {
-        // If the app was suspended and only just woke up, the notification already made the noise.
-        guard UIApplication.shared.applicationState == .active,
-              Date.now.timeIntervalSince(end) < 2 else { return }
-        AlarmPlayer.shared.startRepeating()
+        guard startDate != nil else { return }
+        Task { await startIfNeeded() }
     }
 
     /// Back in the app with the alarm still unacknowledged: keep ringing until the user stops it
     /// (notification sounds are silenced while the app is in the foreground).
     private func resumeAlarmIfNeeded() {
         guard let end = endDate, Date.now >= end,
-              Date.now.timeIntervalSince(end) < AlarmPlayer.maxDuration else { return }
+              Date.now.timeIntervalSince(end) < AlarmPlayer.maxDuration,
+              UIApplication.shared.applicationState != .background else { return }
         AlarmPlayer.shared.startRepeating()
     }
 
@@ -207,11 +287,12 @@ final class EyesActivityController {
     }
 
     private func pushLive() async {
-        for activity in Activity<EyesAttributes>.activities { await push(to: activity) }
+        for activity in runningActivities { await push(to: activity) }
     }
 
     private func endAll() async {
         stopAnimating()
+        timesUpScheduledFor = nil
         for activity in Activity<EyesAttributes>.activities {
             await activity.end(nil, dismissalPolicy: .immediate)
         }

@@ -101,8 +101,8 @@ struct MainScreen: View {
                 .onTapGesture { blink() }
                 .offset(x: layout.tapRect.minX, y: layout.tapRect.minY)
                 .accessibilityElement(children: .ignore)
-                .accessibilityLabel(controller.isRunning ? "Googly eyes, watching the timer" : "Googly eyes")
-                .accessibilityHint("Tap to blink")
+                .accessibilityLabel(L(controller.isRunning ? "Googly eyes, watching the timer" : "Googly eyes"))
+                .accessibilityHint(L("Tap to blink"))
                 .accessibilityAddTraits(.isButton)
                 .accessibilityAction { blink() }
         }
@@ -150,12 +150,12 @@ struct MainScreen: View {
 
     private var disabledBanner: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Live Activities are off")
+            Text(L("Live Activities are off"))
                 .font(.system(size: 15, weight: .heavy))
-            Text("The eyes can't move into your Dynamic Island until you allow Live Activities for Eyes Buddy.")
+            Text(L("The eyes can't move into your Dynamic Island until you allow Live Activities for Eyes Buddy."))
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(EyeStyle.secondaryText)
-            Button("Open Settings") {
+            Button(L("Open Settings")) {
                 if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
             }
             .font(.system(size: 13, weight: .heavy))
@@ -190,7 +190,7 @@ private struct TimerPanel: View {
 
                 Rectangle().fill(EyeStyle.rule).frame(height: 2)
 
-                Text(elapsed == nil ? "Timer" : "Time left")
+                Text(L(elapsed == nil ? "Timer" : "Time left"))
                     .font(.system(size: 11, weight: .heavy))
                     .kerning(0.9)
                     .textCase(.uppercase)
@@ -202,7 +202,7 @@ private struct TimerPanel: View {
                     .minimumScaleFactor(0.5)
                     .lineLimit(1)
                     .foregroundStyle(finished ? EyeStyle.redCopy : .white)
-                    .accessibilityLabel(finished ? "Time's up" : "Time left \(DurationFormat.short(Int(remaining.rounded(.up))))")
+                    .accessibilityLabel(finished ? L("Time's up") : L("Time left %@", DurationFormat.short(Int(remaining.rounded(.up)))))
 
                 ProgressView(value: min(elapsed ?? 0, total), total: max(total, 1))
                     .progressViewStyle(.linear)
@@ -212,7 +212,7 @@ private struct TimerPanel: View {
                 HStack {
                     footerLeading(finished: finished)
                     Spacer()
-                    Text("Total \(DurationFormat.short(controller.totalSeconds))")
+                    Text(L("Total %@", DurationFormat.short(controller.totalSeconds)))
                 }
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(finished ? EyeStyle.redCopy : EyeStyle.secondaryText)
@@ -225,21 +225,21 @@ private struct TimerPanel: View {
     }
 
     private func hint(running: Bool, finished: Bool) -> String {
-        if finished { return "Time's up! 👀" }
-        return running ? "Drag your finger, they're watching the clock." : "Pick a time, then start. They'll keep an eye on it."
+        if finished { return L("Time's up! 👀") }
+        return L(running ? "Drag your finger, they're watching the clock." : "Pick a time, then start. They'll keep an eye on it.")
     }
 
     @ViewBuilder
     private func footerLeading(finished: Bool) -> some View {
         if finished {
-            Text("Time's up! 👀")
+            Text(L("Time's up! 👀"))
         } else if let end = controller.endDate {
             HStack(spacing: 4) {
-                Text("Ends at")
+                Text(L("Ends at"))
                 Text(end, style: .time)
             }
         } else {
-            Text("Not started")
+            Text(L("Not started"))
         }
     }
 
@@ -250,7 +250,7 @@ private struct TimerPanel: View {
                     if running { await controller.stopTimer() } else { await controller.startTimer() }
                 }
             } label: {
-                Text(finished ? "Stop alarm" : running ? "Stop timer" : "Start timer")
+                Text(L(finished ? "Stop alarm" : running ? "Stop timer" : "Start timer"))
                     .font(.system(size: 17, weight: .heavy))
                     .padding(.horizontal, 16)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -265,7 +265,7 @@ private struct TimerPanel: View {
                 Button {
                     Task { await controller.startTimer() }
                 } label: {
-                    Text("Restart")
+                    Text(L("Restart"))
                         .font(.system(size: 17, weight: .heavy))
                         .padding(.horizontal, 16)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -316,5 +316,24 @@ private struct EyesLayout {
 }
 
 #Preview {
-    MainScreen().environment(EyesActivityController())
+    MainScreen()
+        .environment(EyesActivityController())
+        .environment(LanguageModel())
+}
+
+#Preview("日本語") {
+    let _ = AppLanguage.choice = .ja
+    MainScreen()
+        .environment(EyesActivityController())
+        .environment(LanguageModel())
+        .environment(\.locale, AppLanguage.ja.locale)
+}
+
+#Preview("العربية (RTL)") {
+    let _ = AppLanguage.choice = .ar
+    MainScreen()
+        .environment(EyesActivityController())
+        .environment(LanguageModel())
+        .environment(\.locale, AppLanguage.ar.locale)
+        .environment(\.layoutDirection, .rightToLeft)
 }

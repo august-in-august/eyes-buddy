@@ -44,10 +44,17 @@ struct EyesLiveActivity: Widget {
 
 // MARK: - Helpers
 
+extension View {
+    /// The widget runs in its own process, so it applies the app's chosen language direction itself.
+    func appLayoutDirection() -> some View {
+        environment(\.layoutDirection, AppLanguage.current.isRightToLeft ? .rightToLeft : .leftToRight)
+    }
+}
+
 extension ActivityViewContext<EyesAttributes> {
     /// `isStale` is the real trigger (staleDate); the date check keeps previews and late renders honest.
     var isRed: Bool {
-        isStale || attributes.redDate(for: state) <= .now
+        attributes.isTimesUp || isStale || attributes.redDate(for: state) <= .now
     }
 }
 
@@ -88,7 +95,7 @@ private struct BlinkEye: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Blink")
+        .accessibilityLabel(L("Blink"))
     }
 }
 
@@ -100,7 +107,7 @@ private struct WatchingTimer: View {
     var body: some View {
         let red = context.isRed
         VStack(spacing: 2) {
-            Text("Time left")
+            Text(L("Time left"))
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(EyeStyle.secondaryText)
             Text(
@@ -113,6 +120,7 @@ private struct WatchingTimer: View {
                 .foregroundStyle(red ? EyeStyle.redCopy : .white)
                 .multilineTextAlignment(.center)
         }
+        .appLayoutDirection()
     }
 }
 
@@ -135,22 +143,23 @@ private struct ProgressFooter: View {
 
             HStack {
                 if red {
-                    Text("Time's up! 👀")
+                    Text(L("Time's up! 👀"))
                         .foregroundStyle(EyeStyle.redCopy)
                 } else {
                     HStack(spacing: 4) {
-                        Text("Ends at")
+                        Text(L("Ends at"))
                         Text(endDate, style: .time)
                     }
                 }
                 Spacer(minLength: 8)
-                Text("Total \(DurationFormat.short(context.state.redLimitSeconds))")
+                Text(L("Total %@", DurationFormat.short(context.state.redLimitSeconds)))
             }
             .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(EyeStyle.secondaryText)
             .lineLimit(1)
             .minimumScaleFactor(0.8)
         }
+        .appLayoutDirection()
     }
 
 }

@@ -34,14 +34,14 @@ struct IconPicker: View {
                                     .padding(-4)
                             }
                             .padding(4)
-                        Text(choice.title)
+                        Text(L(choice.title))
                             .font(.system(size: 13, weight: .heavy))
                             .foregroundStyle(current == choice.iconName ? .white : EyeStyle.secondaryText)
                     }
                     .frame(minWidth: EyeStyle.minTapTarget, minHeight: EyeStyle.minTapTarget)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("\(choice.title) icon")
+                .accessibilityLabel(L("%@ icon", L(choice.title)))
                 .accessibilityAddTraits(current == choice.iconName ? .isSelected : [])
             }
             Spacer(minLength: 0)

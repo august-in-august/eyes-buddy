@@ -1,7 +1,9 @@
 import SwiftUI
 
 @main struct MyApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var controller = EyesActivityController()
+    @State private var language = LanguageModel()
     @State private var onboardingDone = SharedSettings.onboardingDone
     @Environment(\.scenePhase) private var scenePhase
 
@@ -14,11 +16,22 @@ import SwiftUI
                     OnboardingScreen {
                         SharedSettings.onboardingDone = true
                         onboardingDone = true
+                        QuickActions.shared.refresh()
                     }
                 }
             }
             .environment(controller)
-            .task { if onboardingDone { await controller.startIfNeeded() } }
+            .environment(language)
+            .environment(\.locale, language.resolved.locale)
+            .environment(\.layoutDirection, language.resolved.isRightToLeft ? .rightToLeft : .leftToRight)
+            // Rebuild every screen when the language changes so all text is looked up again.
+            .id(language.resolved)
+            .task {
+                QuickActions.shared.controller = controller
+                QuickActions.shared.refresh()
+                QuickActions.shared.runPending()
+                if onboardingDone { await controller.startIfNeeded() }
+            }
             .onChange(of: scenePhase) { _, phase in
                 guard onboardingDone else { return }
                 switch phase {

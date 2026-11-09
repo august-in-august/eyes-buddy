@@ -5,6 +5,9 @@ import CoreGraphics
 nonisolated struct EyesAttributes: ActivityAttributes {
     /// Static for the life of the activity.
     var sessionStart: Date
+    /// True for the second, scheduled activity that the system starts when time is up. It is always
+    /// red, so the island turns red even if the app is suspended and can't send an update.
+    var isTimesUp = false
 
     struct ContentState: Codable, Hashable {
         /// True = blink frame.

@@ -8,22 +8,22 @@ struct SettingsSections: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            section("Timer length", note: "Pick how long the eyes keep watch before they turn red.") {
+            section(L("Timer length"), note: L("Pick how long the eyes keep watch before they turn red.")) {
                 TimerPicker(seconds: Binding(
                     get: { controller.totalSeconds },
                     set: { value in Task { await controller.setTotal(value) } }
                 ))
             }
 
-            section("Show eyes in Dynamic Island", note: "Long-press the island to open the big eyes.") {
-                toggle("Dynamic Island eyes", isOn: Binding(
+            section(L("Show eyes in Dynamic Island"), note: L("Long-press the island to open the big eyes.")) {
+                toggle(L("Dynamic Island eyes"), isOn: Binding(
                     get: { controller.islandEnabled },
                     set: { value in Task { await controller.setIslandEnabled(value) } }
                 ))
             }
 
-            section("Alarm", note: "Repeats every 5 seconds until you stop it.") {
-                toggle("Alarm sound", isOn: $alarmSound)
+            section(L("Alarm"), note: L("Repeats every 5 seconds until you stop it.")) {
+                toggle(L("Alarm sound"), isOn: $alarmSound)
                     .onChange(of: alarmSound) { _, value in
                         SharedSettings.alarmSoundEnabled = value
                         controller.alarmSettingsChanged()
@@ -33,19 +33,23 @@ struct SettingsSections: View {
                 }
             }
 
-            section("App icon", note: "The dark-mode icon is always the black one.") {
+            section(L("App icon"), note: L("The dark-mode icon is always the black one.")) {
                 IconPicker()
             }
 
-            section("About", note: nil) {
+            section(L("Language"), note: nil) {
+                LanguageMenu()
+            }
+
+            section(L("About"), note: nil) {
                 HStack {
-                    Text("Version").font(.system(size: 17, weight: .semibold))
+                    Text(L("Version")).font(.system(size: 17, weight: .semibold))
                     Spacer()
                     Text(Self.version)
                         .font(.system(size: 17, weight: .semibold))
                         .foregroundStyle(EyeStyle.secondaryText)
                 }
-                Text("Inspired by Googly Eyes for macOS")
+                Text(L("Inspired by Googly Eyes for macOS"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(EyeStyle.secondaryText)
             }

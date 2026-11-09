@@ -1,14 +1,14 @@
 import Foundation
 
 nonisolated enum DurationFormat {
-    /// "5 min", "1 h", "1 h 30 min", "45 s", "2 min 30 s".
+    /// "5 min", "1 h", "1 h 30 min", "45 s", "2 min 30 s" (units follow the app language).
     static func short(_ seconds: Int) -> String {
         let h = seconds / 3600, m = seconds % 3600 / 60, s = seconds % 60
         var parts: [String] = []
-        if h > 0 { parts.append("\(h) h") }
-        if m > 0 { parts.append("\(m) min") }
-        if s > 0 { parts.append("\(s) s") }
-        return parts.isEmpty ? "0 s" : parts.joined(separator: " ")
+        if h > 0 { parts.append(L("duration.h", String(h))) }
+        if m > 0 { parts.append(L("duration.min", String(m))) }
+        if s > 0 { parts.append(L("duration.s", String(s))) }
+        return parts.isEmpty ? L("duration.s", "0") : parts.joined(separator: " ")
     }
 
     /// "1:23:45".

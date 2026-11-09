@@ -16,8 +16,9 @@ struct OnboardingScreen: View {
                     .kerning(0.9)
                     .foregroundStyle(EyeStyle.secondaryText)
                 Spacer()
+                LanguageMenu(style: .compact)
                 if page < pageCount - 1 {
-                    Button("Skip") { page = pageCount - 1 }
+                    Button(L("Skip")) { page = pageCount - 1 }
                         .font(.system(size: 15, weight: .heavy))
                         .frame(minWidth: EyeStyle.minTapTarget, minHeight: EyeStyle.minTapTarget)
                 }
@@ -48,7 +49,7 @@ struct OnboardingScreen: View {
                     }
                 }
             } label: {
-                Text(page < pageCount - 1 ? "Next" : "Get started")
+                Text(L(page < pageCount - 1 ? "Next" : "Get started"))
                     .font(.system(size: 17, weight: .heavy))
                     .padding(.horizontal, 16)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -58,7 +59,7 @@ struct OnboardingScreen: View {
             }
             .buttonStyle(.plain)
 
-            Text(page == pageCount - 1 ? "iOS will ask to allow notifications so the alarm can ring." : " ")
+            Text(page == pageCount - 1 ? L("iOS will ask to allow notifications so the alarm can ring.") : " ")
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(EyeStyle.secondaryText)
                 .padding(.top, 8)
@@ -77,8 +78,8 @@ struct OnboardingScreen: View {
             }
             .padding(14)
             .background(Capsule().fill(.black))
-            headline("Meet your eyes")
-            body("A tiny creature lives in your camera cutout. Start a timer and it keeps watch, blinks when you poke it, and turns red when time runs out.")
+            headline(L("Meet your eyes"))
+            body(L("A tiny creature lives in your camera cutout. Start a timer and it keeps watch, blinks when you poke it, and turns red when time runs out."))
         }
     }
 
@@ -86,22 +87,22 @@ struct OnboardingScreen: View {
         VStack(alignment: .leading, spacing: 20) {
             HStack(spacing: 14) {
                 EyeView(diameter: 60, pupilOffset: CGVector(dx: 0.8, dy: 0.35))
-                Text("Tap me to blink")
+                Text(L("Tap me to blink"))
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(EyeStyle.secondaryText)
                 EyeView(diameter: 60, isClosed: true)
             }
             .padding(14)
             .background(RoundedRectangle(cornerRadius: 28).fill(.black))
-            headline("They live in your Dynamic Island")
-            body("Long-press the island to open the big eyes. Tap an eye and it blinks back at you.")
+            headline(L("They live in your Dynamic Island"))
+            body(L("Long-press the island to open the big eyes. Tap an eye and it blinks back at you."))
         }
     }
 
     private var setLimit: some View {
         VStack(alignment: .leading, spacing: 20) {
-            headline("Set your timer")
-            body("When time runs out, the eyes turn red and growl. Change the time whenever you like.")
+            headline(L("Set your timer"))
+            body(L("When time runs out, the eyes turn red and growl. Change the time whenever you like."))
             TimerPicker(seconds: $total)
         }
     }

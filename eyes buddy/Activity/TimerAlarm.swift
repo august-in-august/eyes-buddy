@@ -87,8 +87,8 @@ enum TimerNotifications {
             : nil
         for index in 0..<repeatCount {
             let content = UNMutableNotificationContent()
-            content.title = "Time's up!"
-            content.body = "Your eyes are red. 👀"
+            content.title = L("Time's up!")
+            content.body = L("Your eyes are red. 👀")
             content.sound = sound
             let delay = max(1, date.timeIntervalSinceNow) + Double(index) * AlarmPlayer.repeatInterval
             try? await UNUserNotificationCenter.current().add(UNNotificationRequest(
