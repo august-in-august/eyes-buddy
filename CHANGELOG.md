@@ -77,6 +77,11 @@
 - App and widget deployment targets are both iOS 17.0 (the widget was 17.6). Version 1.0.1, build 2.
 - Not run on an iOS 17 device or simulator by me; no iOS 17 runtime is installed here.
 
+## 1.0.1: iOS 17 scrolling and notification text
+
+- **Main page didn't scroll on iOS 17:** the finger-tracking `DragGesture(minimumDistance: 0)` sat above the `ScrollView`, which blocks scrolling on iOS 17. Replaced by `TouchObserver`, a UIKit recognizer on the window that recognizes alongside every other gesture and never cancels touches. Checked on an iOS 27.2 simulator: page scrolls, taps work, pupils follow the touch. The iOS 17.5 simulator was only checked for launch (touch automation needs iOS 27+).
+- **Notification text:** the body "Your eyes are red." is now "Tap to open the app and stop the timer." in all 10 languages (notification and the Live Activity alert).
+
 ### Not done / notes
 
 

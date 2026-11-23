@@ -244,7 +244,7 @@ final class EyesActivityController {
                 guard #available(iOS 26.0, *) else { return }
                 let alert = AlertConfiguration(
                     title: LocalizedStringResource(String.LocalizationValue(L("Time's up!"))),
-                    body: LocalizedStringResource(String.LocalizationValue(L("Your eyes are red. 👀"))),
+                    body: LocalizedStringResource(String.LocalizationValue(L("Tap to open the app and stop the timer."))),
                     sound: .named("silence.wav")
                 )
                 timesUpHandle = try Activity.request(

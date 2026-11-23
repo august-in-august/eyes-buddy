@@ -34,17 +34,16 @@ struct MainScreen: View {
                 eyes(layout: layout)
             }
             .ignoresSafeArea()
-            .contentShape(Rectangle())
-            // Simultaneous so tracking works everywhere, including drags that start on the eyes
-            // and drags that scroll the page. Attached after ignoresSafeArea so locations share
-            // the eyes' screen coordinates.
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 0, coordinateSpace: .local)
-                    .onChanged { value in
+            // Tracks the finger everywhere (including drags that scroll the page) without a SwiftUI
+            // drag gesture, which would block scrolling on iOS 17. Screen coordinates match the
+            // full-screen layout above.
+            .background(
+                TouchObserver(
+                    onChange: { point in
                         releaseTask?.cancel()
-                        touch = value.location
-                    }
-                    .onEnded { _ in
+                        touch = point
+                    },
+                    onEnd: {
                         // Pupils stay put for 1.5 s, then drift back to center.
                         releaseTask = Task {
                             try? await Task.sleep(for: .seconds(1.5))
@@ -52,6 +51,7 @@ struct MainScreen: View {
                             touch = nil
                         }
                     }
+                )
             )
         }
         .background(EyeStyle.ground.ignoresSafeArea())
