@@ -63,11 +63,42 @@ enum TimerNotifications {
     private static let repeatCount = 12
 
     /// In the foreground the app plays the sound itself, so the banner is suppressed.
+    /// Tapping a "time's up" notification reports back so the timer can be stopped.
     nonisolated final class ForegroundDelegate: NSObject, UNUserNotificationCenterDelegate {
         func userNotificationCenter(
             _ center: UNUserNotificationCenter,
             willPresent notification: UNNotification
         ) async -> UNNotificationPresentationOptions { [] }
+
+        // Must run on the main thread: when this async method finishes, the system's completion
+        // handler touches UIKit (state restoration), and calling it from another thread crashes
+        // with "Call must be made on main thread".
+        @MainActor
+        func userNotificationCenter(
+            _ center: UNUserNotificationCenter,
+            didReceive response: UNNotificationResponse
+        ) async {
+            // Only a tap on the notification itself (not swipe-to-dismiss).
+            guard response.actionIdentifier == UNNotificationDefaultActionIdentifier else { return }
+            TimerNotifications.handleTap(identifier: response.notification.request.identifier)
+        }
+    }
+
+    /// Called when a "time's up" notification is tapped. Set by the controller.
+    static var tapHandler: (@MainActor () -> Void)? {
+        didSet {
+            // A tap that launched the app arrives before the controller exists; replay it.
+            if pendingTap, let tapHandler {
+                pendingTap = false
+                tapHandler()
+            }
+        }
+    }
+    private static var pendingTap = false
+
+    static func handleTap(identifier: String) {
+        guard identifier.hasPrefix(identifierPrefix) else { return }
+        if let tapHandler { tapHandler() } else { pendingTap = true }
     }
 
     static let delegate = ForegroundDelegate()
@@ -82,6 +113,9 @@ enum TimerNotifications {
 
     static func schedule(at date: Date) async {
         cancel()
+        // The timer already ran out (e.g. relaunch after it finished): the notifications went off
+        // already, and scheduling more would make them ring again right after the user stops it.
+        guard date.timeIntervalSinceNow > 0 else { return }
         let sound = SharedSettings.alarmSoundEnabled
             ? UNNotificationSound(named: UNNotificationSoundName(AlarmSound.selected.fileName))
             : nil

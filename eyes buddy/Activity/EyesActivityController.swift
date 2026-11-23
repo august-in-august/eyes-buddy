@@ -64,6 +64,11 @@ final class EyesActivityController {
             SharedSettings.timerStart = nil
         }
 
+        // Tapping the "time's up" notification opens the app and stops the timer and the alarm.
+        TimerNotifications.tapHandler = { [weak self] in
+            Task { await self?.stopTimerIfFinished() }
+        }
+
         // The phone becoming usable again (unlock, or leaving iPhone Mirroring) is a chance to start
         // an activity that was refused while the app wasn't visible.
         for name in [UIApplication.didBecomeActiveNotification, UIApplication.protectedDataDidBecomeAvailableNotification] {
@@ -110,6 +115,13 @@ final class EyesActivityController {
         QuickActions.shared.refresh()
         alarmSettingsChanged()
         Task { await startIfNeeded() }
+    }
+
+    /// Stops the timer only if it has run out. Used by the notification tap, so a stale notification
+    /// can't stop a timer that was started afterwards.
+    func stopTimerIfFinished() async {
+        guard let end = endDate, Date.now >= end else { return }
+        await stopTimer()
     }
 
     /// Stop the timer and the alarm, and take the eyes out of the island.

@@ -88,6 +88,13 @@
 - **Fix:** `TimeWheel` is now a `UIPickerView` with its own fixed data source (`UIViewRepresentable`), so there is no second copy of the rows to fall out of step. Used by the custom timer and the quick-time editor.
 - Could not reproduce the original crash on the iOS 17.5 simulator (12 automated language switches in 4 s passed on both the old and the new wheel), so the exact trigger is unconfirmed. After the change, the same stress test passes on iOS 17.5, and on iOS 27 the wheel opens at the current value and scrolling it updates the timer.
 
+## Tap the notification to stop the timer
+
+- Tapping a "time's up" notification opens the app and stops the timer and the alarm (`stopTimerIfFinished`). It only acts on a timer that has run out, so a stale notification can't stop a newer timer. Works from a cold launch too (the tap is replayed once the controller exists; the notification delegate is installed in `didFinishLaunching`).
+- Found while testing: the `didReceive` handler must run on the main thread. As a plain async method it crashed the app with "Call must be made on main thread" (the system's completion handler touches UIKit). It is now `@MainActor`.
+- Relaunching with a finished timer no longer re-schedules the 12 end-of-timer notifications (they would have rung again a second after launch).
+- Checked on the iOS 27.2 simulator: banner shows the new text, tapping it opens the app with "Not started", no further notifications arrive. Not run on iOS 17.
+
 ### Not done / notes
 
 
