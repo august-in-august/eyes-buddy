@@ -70,6 +70,13 @@
 - Added `PrivacyInfo.xcprivacy` (UserDefaults, reasons CA92.1 and 1C8F.1) to the app and the widget; no tracking, no collected data.
 - Added `APP_STORE_LISTING.md` (10 languages, limits checked) and `PRIVACY.md`.
 
+## 1.0.1 (build 2): launch crash on iOS 17
+
+- **Crash:** every iOS 17 device crashed at launch with dyld `Symbol not found: _$s11ActivityKit0A5StyleO8standardyA2CmFWC`. `ActivityStyle` (used only by the iOS 26 scheduled-start call) shipped in iOS 26, but the SDK labels it `@available(iOS 16.1)`, so the compiler linked it strongly and the `#available(iOS 26)` guard could not help.
+- **Fix:** ActivityKit is now weak-linked (`OTHER_LDFLAGS = -Wl,-weak_framework,ActivityKit` on the app target). Verified on the Release binary: `LC_LOAD_WEAK_DYLIB`, no strong ActivityKit symbol left. The scheduled red activity still runs only on iOS 26+.
+- App and widget deployment targets are both iOS 17.0 (the widget was 17.6). Version 1.0.1, build 2.
+- Not run on an iOS 17 device or simulator by me; no iOS 17 runtime is installed here.
+
 ### Not done / notes
 
 
