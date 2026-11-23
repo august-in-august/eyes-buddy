@@ -100,6 +100,12 @@
 - New setting under Alarm: "When you tap the notification". Default: **open the app and stop it myself** (the alarm keeps ringing in the app until "Stop alarm"). Optional: **open the app and stop the timer automatically** (the behavior added just before). Stored as `SharedSettings.tapStopsTimer`, strings translated into all 10 languages.
 - Checked on the iOS 27.2 simulator: with the default, tapping the banner opens the app in the finished state (red eyes, "Stop alarm"); with the automatic option the timer is reset to "Not started".
 
+## Island blank on the iPhone 18 Pro simulator (not a bug in the app)
+
+- On the iOS 27.2 simulator the Dynamic Island creates the activity but draws nothing in it (compact and expanded are both empty). The same Live Activity draws correctly on the Lock Screen of the same simulator, and the island previews in Xcode render. The build from Nov 9 (commit 5161544, the version that worked on a real iPhone 16) shows the identical blank island in this simulator, and a Release build behaves the same as Debug, so it is the simulator, not a regression.
+- First use: iOS asks "Allow Live Activities from Eyes Buddy?" and later "Do you want to continue to allow ...?" (choose **Always Allow**). In the simulator these prompts appear on the Lock Screen. Until they are answered the activity is not shown in the island.
+- Check the island on a real iPhone; use the simulator's Lock Screen and Xcode previews for the rest.
+
 ### Not done / notes
 
 
