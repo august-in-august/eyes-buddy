@@ -95,6 +95,11 @@
 - Relaunching with a finished timer no longer re-schedules the 12 end-of-timer notifications (they would have rung again a second after launch).
 - Checked on the iOS 27.2 simulator: banner shows the new text, tapping it opens the app with "Not started", no further notifications arrive. Not run on iOS 17.
 
+## Notification tap: now a setting
+
+- New setting under Alarm: "When you tap the notification". Default: **open the app and stop it myself** (the alarm keeps ringing in the app until "Stop alarm"). Optional: **open the app and stop the timer automatically** (the behavior added just before). Stored as `SharedSettings.tapStopsTimer`, strings translated into all 10 languages.
+- Checked on the iOS 27.2 simulator: with the default, tapping the banner opens the app in the finished state (red eyes, "Stop alarm"); with the automatic option the timer is reset to "Not started".
+
 ### Not done / notes
 
 

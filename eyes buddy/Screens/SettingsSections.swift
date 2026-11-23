@@ -5,6 +5,7 @@ struct SettingsSections: View {
     @Environment(EyesActivityController.self) private var controller
     @State private var alarmSound = SharedSettings.alarmSoundEnabled
     @State private var selectedSound = AlarmSound.selected
+    @State private var tapStopsTimer = SharedSettings.tapStopsTimer
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -31,6 +32,7 @@ struct SettingsSections: View {
                 if alarmSound {
                     soundList
                 }
+                tapChoice
             }
 
             section(L("App icon"), note: L("The dark-mode icon is always the black one.")) {
@@ -108,6 +110,47 @@ struct SettingsSections: View {
             }
         }
         .background(EyeStyle.rule)
+    }
+
+    /// What tapping the "time's up" notification does. Default: just open the app.
+    private var tapChoice: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L("When you tap the notification"))
+                .font(.system(size: 13, weight: .heavy))
+                .foregroundStyle(EyeStyle.secondaryText)
+                .padding(.top, 8)
+            VStack(spacing: 1) {
+                optionRow(L("Open the app, I'll stop it myself"), selected: !tapStopsTimer) { setTapStops(false) }
+                optionRow(L("Open the app and stop the timer automatically"), selected: tapStopsTimer) { setTapStops(true) }
+            }
+            .background(EyeStyle.rule)
+        }
+    }
+
+    private func setTapStops(_ value: Bool) {
+        tapStopsTimer = value
+        SharedSettings.tapStopsTimer = value
+    }
+
+    private func optionRow(_ title: String, selected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 12) {
+                Text(title)
+                    .font(.system(size: 15, weight: .heavy))
+                    .multilineTextAlignment(.leading)
+                Spacer()
+                Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 17, weight: .semibold))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
+            .frame(maxWidth: .infinity, minHeight: 52, alignment: .leading)
+            .foregroundStyle(selected ? Color.black : .white)
+            .background(selected ? Color.white : EyeStyle.ground)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 
     /// The accent track keeps the white knob visible in both states.

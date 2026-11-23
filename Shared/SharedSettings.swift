@@ -14,6 +14,7 @@ nonisolated enum SharedSettings {
         static let alarmSoundID = "alarmSoundID"
         static let languageCode = "languageCode"
         static let lastTimer = "lastTimerSeconds"
+        static let tapStopsTimer = "tapStopsTimer"
     }
 
     // Falls back to standard defaults if the group container is unavailable (e.g. unsigned builds).
@@ -86,6 +87,13 @@ nonisolated enum SharedSettings {
             return v == 0 ? totalSeconds : clampTotal(v)
         }
         set { defaults.set(clampTotal(newValue), forKey: Key.lastTimer) }
+    }
+
+    /// What tapping the "time's up" notification does. false (default): just open the app and let
+    /// the user stop the alarm; true: open the app and stop the timer and alarm right away.
+    static var tapStopsTimer: Bool {
+        get { defaults.object(forKey: Key.tapStopsTimer) as? Bool ?? false }
+        set { defaults.set(newValue, forKey: Key.tapStopsTimer) }
     }
 
     static var onboardingDone: Bool {

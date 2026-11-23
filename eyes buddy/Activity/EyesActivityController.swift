@@ -64,8 +64,11 @@ final class EyesActivityController {
             SharedSettings.timerStart = nil
         }
 
-        // Tapping the "time's up" notification opens the app and stops the timer and the alarm.
+        // Tapping the "time's up" notification always opens the app. If the user chose it in the
+        // settings, it also stops the timer and the alarm; otherwise the alarm keeps ringing in the
+        // app until they tap "Stop alarm".
         TimerNotifications.tapHandler = { [weak self] in
+            guard SharedSettings.tapStopsTimer else { return }
             Task { await self?.stopTimerIfFinished() }
         }
 
