@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 /// Timer length chooser: seven editable quick times plus a custom hours/minutes/seconds wheel.
 struct TimerPicker: View {
@@ -85,45 +86,83 @@ struct TimerPicker: View {
 }
 
 /// Alarm-style scrolling hours / minutes / seconds wheels.
-struct TimeWheel: View {
+///
+/// Built on UIKit's `UIPickerView` with its own fixed data source. SwiftUI's wheel `Picker` keeps a
+/// separate copy of its rows, and on iOS 17 UIKit can ask for a row after SwiftUI has already dropped
+/// them (seen when the whole screen is rebuilt on a language change), which crashes with an
+/// index-out-of-range error.
+struct TimeWheel: UIViewRepresentable {
     @Binding var seconds: Int
 
-    var body: some View {
-        HStack(spacing: 0) {
-            wheel(0...(SharedSettings.maxTotal / 3600 - 1), unit: L("wheel.h"), value: seconds / 3600) {
-                set(hours: $0, minutes: seconds % 3600 / 60, seconds: seconds % 60)
-            }
-            wheel(0...59, unit: L("wheel.min"), value: seconds % 3600 / 60) {
-                set(hours: seconds / 3600, minutes: $0, seconds: seconds % 60)
-            }
-            wheel(0...59, unit: L("wheel.s"), value: seconds % 60) {
-                set(hours: seconds / 3600, minutes: seconds % 3600 / 60, seconds: $0)
-            }
-        }
-        .frame(height: 140)
+    func makeCoordinator() -> Coordinator { Coordinator(seconds: $seconds) }
+
+    func makeUIView(context: Context) -> UIPickerView {
+        let picker = UIPickerView()
+        picker.dataSource = context.coordinator
+        picker.delegate = context.coordinator
+        picker.overrideUserInterfaceStyle = .dark
+        context.coordinator.show(seconds, in: picker)
+        return picker
     }
 
-    private func wheel(_ range: ClosedRange<Int>, unit: String, value: Int, onChange: @escaping (Int) -> Void) -> some View {
-        HStack(spacing: 0) {
-            Picker(unit, selection: Binding(get: { value }, set: onChange)) {
-                ForEach(range, id: \.self) { n in
-                    Text("\(n)")
-                        .font(.system(size: 22, weight: .heavy).monospacedDigit())
-                        .tag(n)
-                }
-            }
-            .pickerStyle(.wheel)
-            Text(unit)
-                .font(.system(size: 15, weight: .heavy))
-                .foregroundStyle(EyeStyle.secondaryText)
-                .frame(width: 34, alignment: .leading)
-        }
-        .frame(maxWidth: .infinity)
+    func updateUIView(_ picker: UIPickerView, context: Context) {
+        context.coordinator.seconds = $seconds
+        context.coordinator.show(seconds, in: picker)
     }
 
-    /// Never lets the timer drop to zero.
-    private func set(hours: Int, minutes: Int, seconds s: Int) {
-        seconds = SharedSettings.clampTotal(hours * 3600 + minutes * 60 + s)
+    func sizeThatFits(_ proposal: ProposedViewSize, uiView: UIPickerView, context: Context) -> CGSize? {
+        CGSize(width: proposal.width ?? 300, height: 140)
+    }
+
+    final class Coordinator: NSObject, UIPickerViewDataSource, UIPickerViewDelegate {
+        var seconds: Binding<Int>
+        /// Hours (0...7, a Live Activity lasts at most 8 h), minutes, seconds.
+        private let rowCounts = [SharedSettings.maxTotal / 3600, 60, 60]
+
+        init(seconds: Binding<Int>) { self.seconds = seconds }
+
+        /// Moves the wheels to `total`, only touching those that differ.
+        func show(_ total: Int, in picker: UIPickerView) {
+            let rows = [total / 3600, total % 3600 / 60, total % 60]
+            for (component, row) in rows.enumerated() where picker.selectedRow(inComponent: component) != row {
+                picker.selectRow(row, inComponent: component, animated: false)
+            }
+        }
+
+        func numberOfComponents(in pickerView: UIPickerView) -> Int { rowCounts.count }
+
+        func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
+            rowCounts[component]
+        }
+
+        func pickerView(_ pickerView: UIPickerView, widthForComponent component: Int) -> CGFloat {
+            max(pickerView.bounds.width / CGFloat(rowCounts.count), 80)
+        }
+
+        func pickerView(_ pickerView: UIPickerView, rowHeightForComponent component: Int) -> CGFloat { 40 }
+
+        func pickerView(
+            _ pickerView: UIPickerView,
+            viewForRow row: Int,
+            forComponent component: Int,
+            reusing view: UIView?
+        ) -> UIView {
+            let label = (view as? UILabel) ?? UILabel()
+            label.textAlignment = .center
+            label.font = .monospacedDigitSystemFont(ofSize: 20, weight: .heavy)
+            label.textColor = .white
+            let units = [L("wheel.h"), L("wheel.min"), L("wheel.s")]
+            label.text = "\(row) \(units[component])"
+            return label
+        }
+
+        func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+            let rows = (0..<rowCounts.count).map { pickerView.selectedRow(inComponent: $0) }
+            // Never lets the timer drop to zero.
+            let total = SharedSettings.clampTotal(rows[0] * 3600 + rows[1] * 60 + rows[2])
+            seconds.wrappedValue = total
+            show(total, in: pickerView)
+        }
     }
 }
 

@@ -82,6 +82,12 @@
 - **Main page didn't scroll on iOS 17:** the finger-tracking `DragGesture(minimumDistance: 0)` sat above the `ScrollView`, which blocks scrolling on iOS 17. Replaced by `TouchObserver`, a UIKit recognizer on the window that recognizes alongside every other gesture and never cancels touches. Checked on an iOS 27.2 simulator: page scrolls, taps work, pupils follow the touch. The iOS 17.5 simulator was only checked for launch (touch automation needs iOS 27+).
 - **Notification text:** the body "Your eyes are red." is now "Tap to open the app and stop the timer." in all 10 languages (notification and the Live Activity alert).
 
+## 1.0.1: crash when switching language on iOS 17
+
+- **Crash:** iOS 17.5 crash reports show an array index-out-of-range inside SwiftUI's wheel `Picker` (hours/minutes/seconds), hit while the whole screen is rebuilt on a language change: UIKit asks the old wheel for a row after SwiftUI has dropped its copy of the rows.
+- **Fix:** `TimeWheel` is now a `UIPickerView` with its own fixed data source (`UIViewRepresentable`), so there is no second copy of the rows to fall out of step. Used by the custom timer and the quick-time editor.
+- Could not reproduce the original crash on the iOS 17.5 simulator (12 automated language switches in 4 s passed on both the old and the new wheel), so the exact trigger is unconfirmed. After the change, the same stress test passes on iOS 17.5, and on iOS 27 the wheel opens at the current value and scrolling it updates the timer.
+
 ### Not done / notes
 
 
