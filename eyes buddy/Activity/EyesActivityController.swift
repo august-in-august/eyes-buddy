@@ -300,7 +300,7 @@ final class EyesActivityController {
         do {
             _ = try Activity.request(
                 attributes: attributes,
-                content: ActivityContent(state: live, staleDate: nil),
+                content: ActivityContent(state: live, staleDate: nil, relevanceScore: Self.relevance(for: sessionStart)),
                 pushType: nil
             )
             activityRetryTask?.cancel()
@@ -346,8 +346,16 @@ final class EyesActivityController {
         live.redLimitSeconds = totalSeconds
         await activity.update(ActivityContent(
             state: live,
-            staleDate: nil
+            staleDate: nil,
+            relevanceScore: Self.relevance(for: activity.attributes.sessionStart)
         ))
+    }
+
+    /// The island shows the activity with the highest score. Scoring by start time makes the newest timer
+    /// always win over any older activity the system still holds (leftovers from earlier builds, or ones the
+    /// app can no longer reach), so a stale red one can't hide the running timer.
+    private static func relevance(for sessionStart: Date) -> Double {
+        sessionStart.timeIntervalSinceReferenceDate
     }
 
     private func pushLive() async {

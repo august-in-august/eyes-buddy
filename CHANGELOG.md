@@ -117,6 +117,7 @@
 - **Cause:** a scheduled backup "time's up" activity (relevance 100) was started ahead of the end of the timer. It could outlive the timer, outrank the next running activity in the island, and stay red.
 - **Fix:** the backup activity is removed. At the end, if the app is not in the background the activity is ended; if it is, the single running activity turns red (`finished`). Leftover legacy "time's up" activities are swept on every sync.
 - **Trade-off:** if the app is suspended when the timer ends, the island can't turn red (it shows white 0:00) until the app is opened; the notification and sound still fire.
+- **Follow-up (device report: red "time's up" eyes still shown while a new timer runs; had to swipe the island to see the new one):** that means an older activity the island still held outranked the new one (swiping the island switches between activities). Every activity now carries a relevance score equal to its start time, so the newest timer always takes the island.
 - Not verified on a real iPhone (the island doesn't render in the simulator). Reinstall the app to clear any ghost activities from older builds. Raise the build number (3 -> 4+) for the next upload.
 
 ### Not done / notes
