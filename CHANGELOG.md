@@ -112,6 +112,13 @@
 - **Island not tappable after time's up.** The activity had no explicit open action, and in the expanded view / Lock Screen the eyes were blink buttons. Now the whole activity opens the app (`widgetURL` = `eyesbuddy://open`, registered as a URL scheme), and once time is up the eyes are links that open the app instead of blinking. The app handles the link like a notification tap, so the "When you tap the notification" setting applies (default: just open the app).
 - Checked: URL scheme registered (iOS 17.5 simulator asks "Open in Eyes Buddy?"), builds, red expanded preview renders. Not verified on a real iPhone: the island does not render in the simulator.
 
+### Red eyes lingering / expanded view stuck on "Time's up"
+
+- **Cause:** a scheduled backup "time's up" activity (relevance 100) was started ahead of the end of the timer. It could outlive the timer, outrank the next running activity in the island, and stay red.
+- **Fix:** the backup activity is removed. At the end, if the app is not in the background the activity is ended; if it is, the single running activity turns red (`finished`). Leftover legacy "time's up" activities are swept on every sync.
+- **Trade-off:** if the app is suspended when the timer ends, the island can't turn red (it shows white 0:00) until the app is opened; the notification and sound still fire.
+- Not verified on a real iPhone (the island doesn't render in the simulator). Reinstall the app to clear any ghost activities from older builds. Raise the build number (3 -> 4+) for the next upload.
+
 ### Not done / notes
 
 

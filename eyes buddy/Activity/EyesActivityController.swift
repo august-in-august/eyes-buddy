@@ -27,11 +27,6 @@ final class EyesActivityController {
     @ObservationIgnored private var endTask: Task<Void, Never>?
     /// True while the slow tired close runs, so the normal blink doesn't fight over the lid.
     @ObservationIgnored private var tiredActive = false
-    /// The end time the pending "time's up" activity was scheduled for.
-    @ObservationIgnored private var timesUpScheduledFor: Date?
-    /// Handle to the scheduled "time's up" activity. A pending activity may not show up in
-    /// `Activity.activities`, and leaked ones count toward the per-app limit, so it is ended through this.
-    @ObservationIgnored private var timesUpHandle: Activity<EyesAttributes>?
     /// Retries starting the activity when the system refused (e.g. the app isn't visible on the phone).
     @ObservationIgnored private var activityRetryTask: Task<Void, Never>?
     @ObservationIgnored private var isSyncing = false
@@ -178,6 +173,7 @@ final class EyesActivityController {
         cancelBackgroundGrace()
         activitiesEnabled = authorization.areActivitiesEnabled
         resumeAlarmIfNeeded()
+        await endTimesUpActivities()
 
         // The 8 h system limit ends the activity, so a timer can't outlive it.
         if let start = startDate, Date.now.timeIntervalSince(start) >= TimeInterval(EyeStyle.maxSessionSeconds) {
@@ -191,17 +187,19 @@ final class EyesActivityController {
         }
         guard activitiesEnabled else { return }
 
-        // Time is up and this process is running, so turn the running activity red itself: no gap,
-        // and the standby "time's up" activity (meant for a suspended app) isn't needed.
+        // Time is up and this process is running.
         if let end = endDate, Date.now >= end {
             stopAnimating()
-            // The user is looking at the app, so the island has done its job: end it, otherwise the red
-            // eyes would stay in the island even after the app is closed. The app screen keeps
-            // showing "time's up" and the alarm until "Stop alarm".
-            if UIApplication.shared.applicationState == .active {
+            // If the user is here (app open, or just being opened, e.g. by tapping the island), the island
+            // has done its job: end it, otherwise the red eyes would stay in the island even after the app
+            // is closed. The app screen keeps showing "time's up" and the alarm until "Stop alarm".
+            if UIApplication.shared.applicationState != .background {
                 await endAll()
                 return
             }
+            // The app is still alive in the background (grace period): turn the running activity red.
+            // If the app is suspended instead, nothing can update it; it stays as it was until the app
+            // is opened, and the notification is what tells the user.
             live.isClosed = false
             live.lid = 0
             live.sweep = -1
@@ -209,11 +207,6 @@ final class EyesActivityController {
             live.pupilOffset = CGVector(dx: 0, dy: 0.6)
             if let current = runningActivities.first, current.attributes.sessionStart == start {
                 await push(to: current)
-                // Red is showing; drop the standby one only after, so the island never goes blank.
-                await endTimesUpActivities()
-            } else {
-                // The running activity is gone (e.g. dismissed); fall back to the red one.
-                await ensureTimesUpActivity(start: start, scheduled: false)
             }
             return
         }
@@ -226,13 +219,11 @@ final class EyesActivityController {
                 await current.end(nil, dismissalPolicy: .immediate)
             } else {
                 await push(to: current)
-                await ensureTimesUpActivity(start: start, scheduled: true)
                 startAnimating()
                 return
             }
         }
         startActivity(sessionStart: start)
-        await ensureTimesUpActivity(start: start, scheduled: true)
         startAnimating()
     }
 
@@ -244,58 +235,10 @@ final class EyesActivityController {
         Activity<EyesAttributes>.activities.filter { $0.attributes.isTimesUp }
     }
 
-    /// The system can't be asked to update the running activity while the app is suspended, so a
-    /// second, always-red activity is scheduled to start at the end time. The system starts it on
-    /// its own (with a silent alert that lights the island); its sound comes from the notifications.
-    /// `scheduled == false` means time is already up, so it is started right away if missing.
-    private func ensureTimesUpActivity(start: Date, scheduled: Bool) async {
-        let existing = timesUpActivities
-        let matching = existing.first { $0.attributes.sessionStart == start }
-        if let matching {
-            for extra in existing where extra.id != matching.id { await extra.end(nil, dismissalPolicy: .immediate) }
-            // Already there for this end time (or already started): leave it alone.
-            if !scheduled || timesUpScheduledFor == endDate { return }
-        }
-        await endTimesUpActivities()
-
-        let attributes = EyesAttributes(sessionStart: start, isTimesUp: true)
-        var state = EyesAttributes.ContentState.make(redLimitSeconds: totalSeconds)
-        state.pupilOffset = CGVector(dx: 0, dy: 0.6)
-        state.finished = true
-        // Highest relevance so it takes the main island slot over the running one.
-        let content = ActivityContent(state: state, staleDate: nil, relevanceScore: 100)
-        do {
-            if scheduled, let end = endDate, end > .now {
-                // Scheduled starts need iOS 26; older systems rely on the stale date alone.
-                guard #available(iOS 26.0, *) else { return }
-                let alert = AlertConfiguration(
-                    title: LocalizedStringResource(String.LocalizationValue(L("Time's up!"))),
-                    body: LocalizedStringResource(String.LocalizationValue(L("Tap to open the app and stop the timer."))),
-                    sound: .named("silence.wav")
-                )
-                timesUpHandle = try Activity.request(
-                    attributes: attributes, content: content, pushType: nil,
-                    style: .standard, alertConfiguration: alert,
-                    // Starts a little early: the system needs a moment to present the alert, and this
-                    // way the red eyes land together with the notification sound.
-                    start: max(.now.addingTimeInterval(1), end.addingTimeInterval(-EyeStyle.timesUpLead))
-                )
-                timesUpScheduledFor = end
-            } else {
-                timesUpHandle = try Activity.request(attributes: attributes, content: content, pushType: nil)
-            }
-        } catch {
-            Self.log.error("time's-up activity request failed: \(String(describing: error), privacy: .public)")
-            activitiesEnabled = authorization.areActivitiesEnabled
-        }
-    }
-
-    /// Ends every "time's up" activity, including the pending one we hold a handle to.
+    /// Earlier versions scheduled a second, always-red "time's up" activity. It outranked the real one and
+    /// could linger, so it is no longer created; this ends any left over from those versions.
     private func endTimesUpActivities() async {
         for activity in timesUpActivities { await activity.end(nil, dismissalPolicy: .immediate) }
-        if let handle = timesUpHandle { await handle.end(nil, dismissalPolicy: .immediate) }
-        timesUpHandle = nil
-        timesUpScheduledFor = nil
     }
 
     /// Keep animating briefly while iOS lets the process run, then settle on a calm frame.
@@ -376,10 +319,7 @@ final class EyesActivityController {
                     await endAll()
                     for activity in Activity<EyesAttributes>.activities { await activity.end(nil, dismissalPolicy: .immediate) }
                     startActivity(sessionStart: sessionStart, isRetryAfterCleanup: true)
-                    if !runningActivities.isEmpty {
-                        await ensureTimesUpActivity(start: sessionStart, scheduled: true)
-                        startAnimating()
-                    }
+                    if !runningActivities.isEmpty { startAnimating() }
                 }
                 return
             }
