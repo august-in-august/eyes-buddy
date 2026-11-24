@@ -32,6 +32,11 @@ import SwiftUI
                 QuickActions.shared.runPending()
                 if onboardingDone { await controller.startIfNeeded() }
             }
+            // Tapping the island / Lock Screen activity opens the app through this link.
+            .onOpenURL { url in
+                guard url == EyesAttributes.openAppURL else { return }
+                controller.handleTimesUpTap()
+            }
             .onChange(of: scenePhase) { _, phase in
                 guard onboardingDone else { return }
                 switch phase {

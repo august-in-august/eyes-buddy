@@ -9,6 +9,8 @@ struct EyesLiveActivity: Widget {
             LockScreenView(context: context)
                 .activityBackgroundTint(.black)
                 .activitySystemActionForegroundColor(.white)
+                // Tapping anywhere that isn't a button opens the app.
+                .widgetURL(EyesAttributes.openAppURL)
         } dynamicIsland: { context in
             let red = context.isRed
             return DynamicIsland {
@@ -37,6 +39,8 @@ struct EyesLiveActivity: Widget {
             } minimal: {
                 ContextEye(context: context, diameter: EyeStyle.minimalEye)
             }
+            // Compact and minimal taps open the app; the expanded eyes are buttons or links below.
+            .widgetURL(EyesAttributes.openAppURL)
             .keylineTint(red ? EyeStyle.accent : .white)
         }
     }
@@ -82,20 +86,28 @@ private struct BlinkEye: View {
     let diameter: CGFloat
     var expanded = false
 
+    private var eye: some View {
+        EyeView(
+            diameter: diameter,
+            pupilOffset: expanded ? context.state.expandedOffset(rightEye: rightEye) : context.state.pupilOffset,
+            isClosed: context.state.isClosed,
+            isRed: context.isRed,
+            closure: context.state.lid
+        )
+        .frame(minWidth: EyeStyle.minTapTarget, minHeight: EyeStyle.minTapTarget)
+        .contentShape(Rectangle())
+    }
+
     var body: some View {
-        Button(intent: BlinkIntent()) {
-            EyeView(
-                diameter: diameter,
-                pupilOffset: expanded ? context.state.expandedOffset(rightEye: rightEye) : context.state.pupilOffset,
-                isClosed: context.state.isClosed,
-                isRed: context.isRed,
-                closure: context.state.lid
-            )
-            .frame(minWidth: EyeStyle.minTapTarget, minHeight: EyeStyle.minTapTarget)
-            .contentShape(Rectangle())
+        if context.isRed {
+            // Time is up: tapping the eyes opens the app, like tapping the notification.
+            Link(destination: EyesAttributes.openAppURL) { eye }
+                .accessibilityLabel(L("Tap to open the app and stop the timer."))
+        } else {
+            Button(intent: BlinkIntent()) { eye }
+                .buttonStyle(.plain)
+                .accessibilityLabel(L("Blink"))
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(L("Blink"))
     }
 }
 

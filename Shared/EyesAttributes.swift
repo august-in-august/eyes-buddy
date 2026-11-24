@@ -5,6 +5,9 @@ import CoreGraphics
 nonisolated struct EyesAttributes: ActivityAttributes {
     /// Static for the life of the activity.
     var sessionStart: Date
+    /// Opened when the Live Activity is tapped (Dynamic Island and Lock Screen); handled by the app.
+    static let openAppURL = URL(string: "eyesbuddy://open")!
+
     /// True for the second, scheduled activity that the system starts when time is up. It is always
     /// red, so the island turns red even if the app is suspended and can't send an update.
     var isTimesUp = false

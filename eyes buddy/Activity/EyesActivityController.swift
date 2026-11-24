@@ -67,10 +67,7 @@ final class EyesActivityController {
         // Tapping the "time's up" notification always opens the app. If the user chose it in the
         // settings, it also stops the timer and the alarm; otherwise the alarm keeps ringing in the
         // app until they tap "Stop alarm".
-        TimerNotifications.tapHandler = { [weak self] in
-            guard SharedSettings.tapStopsTimer else { return }
-            Task { await self?.stopTimerIfFinished() }
-        }
+        TimerNotifications.tapHandler = { [weak self] in self?.handleTimesUpTap() }
 
         // The phone becoming usable again (unlock, or leaving iPhone Mirroring) is a chance to start
         // an activity that was refused while the app wasn't visible.
@@ -118,6 +115,13 @@ final class EyesActivityController {
         QuickActions.shared.refresh()
         alarmSettingsChanged()
         Task { await startIfNeeded() }
+    }
+
+    /// The user tapped the "time's up" notification or the red eyes in the island/Lock Screen. The app
+    /// is already opening; by default the user then stops the alarm there, or the setting stops it now.
+    func handleTimesUpTap() {
+        guard SharedSettings.tapStopsTimer else { return }
+        Task { await stopTimerIfFinished() }
     }
 
     /// Stops the timer only if it has run out. Used by the notification tap, so a stale notification
@@ -191,6 +195,13 @@ final class EyesActivityController {
         // and the standby "time's up" activity (meant for a suspended app) isn't needed.
         if let end = endDate, Date.now >= end {
             stopAnimating()
+            // The user is looking at the app, so the island has done its job: end it, otherwise the red
+            // eyes would stay in the island even after the app is closed. The app screen keeps
+            // showing "time's up" and the alarm until "Stop alarm".
+            if UIApplication.shared.applicationState == .active {
+                await endAll()
+                return
+            }
             live.isClosed = false
             live.lid = 0
             live.sweep = -1

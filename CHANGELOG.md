@@ -106,6 +106,12 @@
 - First use: iOS asks "Allow Live Activities from Eyes Buddy?" and later "Do you want to continue to allow ...?" (choose **Always Allow**). In the simulator these prompts appear on the Lock Screen. Until they are answered the activity is not shown in the island.
 - Check the island on a real iPhone; use the simulator's Lock Screen and Xcode previews for the rest.
 
+## Device feedback: red eyes lingering, island not tappable
+
+- **Red eyes stayed in the island after the app was closed.** A Live Activity can only be ended by the app, so once the timer is up and the user opens the app, the app now ends the activity (the app screen keeps showing "time's up" and the alarm). If the user never opens the app, the red eyes stay (iOS removes them after 8 h at the latest) so the timer isn't missed.
+- **Island not tappable after time's up.** The activity had no explicit open action, and in the expanded view / Lock Screen the eyes were blink buttons. Now the whole activity opens the app (`widgetURL` = `eyesbuddy://open`, registered as a URL scheme), and once time is up the eyes are links that open the app instead of blinking. The app handles the link like a notification tap, so the "When you tap the notification" setting applies (default: just open the app).
+- Checked: URL scheme registered (iOS 17.5 simulator asks "Open in Eyes Buddy?"), builds, red expanded preview renders. Not verified on a real iPhone: the island does not render in the simulator.
+
 ### Not done / notes
 
 
